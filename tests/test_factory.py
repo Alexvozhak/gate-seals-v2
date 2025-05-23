@@ -1,18 +1,18 @@
-from ape import reverts
-from ape.logging import logger
 from ape.exceptions import VirtualMachineError
 from utils.blueprint import verify_eip522_blueprint
-from utils.constants import ZERO_ADDRESS
+from utils.constants import ZERO_ADDRESS, BLUEPRINT_ZERO_ADDRESS
 
 
 def test_factory_blueprint_cannot_be_zero_address(project, deployer):
-    with reverts("blueprint: zero address"):
+    try:
         project.GateSealFactory.deploy(ZERO_ADDRESS, sender=deployer)
+        assert False, "Should have reverted"
+    except VirtualMachineError as e:
+        assert BLUEPRINT_ZERO_ADDRESS in str(e)
 
 
-def test_blueprint_uncallable(project, blueprint_address):
+def test_blueprint_not_callable(project, blueprint_address):
     blueprint = project.GateSeal.at(blueprint_address)
-    # using try-except because ape.reverts doesn't catch VirtualMachineError for some reason
     try:
         blueprint.get_sealing_committee()
         assert False, "did not crash"

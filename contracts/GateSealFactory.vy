@@ -37,9 +37,16 @@ MAX_SEALABLES: constant(uint256) = 8
 # Address of the blueprint that must be deployed beforehand
 BLUEPRINT: immutable(address)
 
+# @dev Error messages
+BLUEPRINT_ZERO_ADDRESS: constant(String[32]) = "blueprint: zero address"
+
 @external
 def __init__(_blueprint: address):
-    assert _blueprint != empty(address), "blueprint: zero address"
+    """
+    @notice Initialize the factory with a blueprint contract
+    @param _blueprint The address of the blueprint contract
+    """
+    assert _blueprint != empty(address), BLUEPRINT_ZERO_ADDRESS
     BLUEPRINT = _blueprint
 
 
