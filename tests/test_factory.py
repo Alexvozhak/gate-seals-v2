@@ -1,5 +1,5 @@
 from ape.exceptions import VirtualMachineError
-from utils.blueprint import verify_eip522_blueprint
+from utils.blueprint import verify_eip5202_blueprint
 from utils.constants import BLUEPRINT_ZERO_ADDRESS
 from ape.utils import ZERO_ADDRESS
 
@@ -29,4 +29,4 @@ def test_blueprint_address_matches(blueprint_address, gate_seal_factory):
 
 def test_compliance_with_eip_5202(project, blueprint_address):
     blueprint = project.provider.get_code(blueprint_address)
-    verify_eip522_blueprint(blueprint)
+    verify_eip5202_blueprint(blueprint)

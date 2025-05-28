@@ -62,10 +62,10 @@ def verify_blueprint_deploy_preamble(blueprint_deploy_bytecode):
         == DEPLOY_PREABLE_POST_LENGTH_BYTES.hex()
     )
 
-    verify_eip522_blueprint(blueprint_deploy_bytecode[DEPLOY_PREAMBLE_BYTE_LENGTH:])
+    verify_eip5202_blueprint(blueprint_deploy_bytecode[DEPLOY_PREAMBLE_BYTE_LENGTH:])
 
 
-def verify_eip522_blueprint(bytecode):
+def verify_eip5202_blueprint(bytecode):
     assert bytecode[0] == int(EIP_5202_EXECUTION_HALT_BYTE.hex(), 16)
     assert bytecode[1] == int(EIP_5202_BLUEPRINT_IDENTIFIER_BYTE.hex(), 16)
     assert bytecode[2] == int(EIP_5202_VERSION_BYTE.hex(), 16)
