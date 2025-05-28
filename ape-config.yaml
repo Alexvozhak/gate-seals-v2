@@ -1,9 +1,9 @@
 name: gate-seal
-plugins:
-  - name: vyper
-    version: 0.6.1
-  - name: infura
-    version: 0.6.1
+
+compiler:
+  vyper:
+    version: 0.4.1
+    evm_version: cancun
 
 ethereum:
   default_network: local
@@ -11,9 +11,10 @@ ethereum:
     default_provider: hardhat
 
 hardhat:
+  hardhat_config_file: ./hardhat.config.js
   fork:
     ethereum:
-      mainnet:
+      hoodi:
         upstream_provider: infura
-      goerli:
+      mainnet:
         upstream_provider: infura

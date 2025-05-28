@@ -1,4 +1,4 @@
-# @version 0.3.7
+# @version 0.4.1
 
 """
 @title GateSeal
@@ -13,7 +13,7 @@
      GateSeal assumes that they have the permission to pause the contracts.
 
      GateSeals are only a temporary solution and will be deprecated in the future,
-     as it is undesireable for the protocol to rely on a multisig. This is why
+     as it is undesirable for the protocol to rely on a multisig. This is why
      each GateSeal has an expiry date. Once expired, GateSeal is no longer
      usable and a new GateSeal must be set up with a new multisig committee. This
      works as a kind of difficulty bomb, a device that encourages the protocol
@@ -23,6 +23,19 @@
      sealables are pausable contracts that implement `pauseFor(duration)` interface.
 """
 
+# The maximum GateSeal expiry duration is 1 year.
+MAX_EXPIRY_PERIOD_DAYS: constant(uint256) = 365
+MAX_EXPIRY_PERIOD_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_EXPIRY_PERIOD_DAYS
+
+interface IPausableUntil:
+    def pauseFor(_duration: uint256): nonpayable
+    def isPaused() -> bool: view
+
+
+# A unix epoch timestamp starting from which GateSeal is completely unusable
+# and a new GateSeal will have to be set up. This timestamp will be changed
+# upon sealing to expire GateSeal immediately which will revert any consecutive sealings.
+
 
 event Sealed:
     gate_seal: address
@@ -30,10 +43,6 @@ event Sealed:
     sealed_for: uint256
     sealable: address
     sealed_at: uint256
-
-interface IPausableUntil:
-    def pauseFor(_duration: uint256): nonpayable
-    def isPaused() -> bool: view
 
 SECONDS_PER_DAY: constant(uint256) = 60 * 60 * 24
 
@@ -55,48 +64,50 @@ MAX_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_SEAL_DURATI
 # is why we've opted to use a dynamic-size array.
 MAX_SEALABLES: constant(uint256) = 8
 
-# The maximum GateSeal expiry duration is 1 year.
-MAX_EXPIRY_PERIOD_DAYS: constant(uint256) = 365
-MAX_EXPIRY_PERIOD_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_EXPIRY_PERIOD_DAYS
+# Below are string constants with error messages used for input validation and GateSeal operation checks.
+SEALABLE_NOT_IN_LIST: constant(String[34]) = "sealables: includes a non-sealable"
+SEALING_COMMITTEE_ZERO: constant(String[31]) = "sealing committee: zero address"
+SEAL_DURATION_TOO_SHORT: constant(String[24]) = "seal duration: too short"
+SEAL_DURATION_EXCEEDS_MAX: constant(String[26]) = "seal duration: exceeds max"
+SEALABLES_EMPTY_LIST: constant(String[21]) = "sealables: empty list"
+EXPIRY_MUST_BE_FUTURE: constant(String[39]) = "expiry timestamp: must be in the future"
+EXPIRY_EXCEEDS_MAX: constant(String[43]) = "expiry timestamp: exceeds max expiry period"
+SEALABLES_INCLUDES_ZERO: constant(String[32]) = "sealables: includes zero address"
+SEALABLES_INCLUDES_DUPLICATES: constant(String[30]) = "sealables: includes duplicates"
+
 
 # To simplify the code, we chose not to implement committees in GateSeals.
 # Instead, GateSeals are operated by a single account which must be a multisig.
 # The code does not perform any such checks but we pinky-promise that
 # the sealing committee will always be a multisig. 
 SEALING_COMMITTEE: immutable(address)
+# The addresses of pausable contracts. The gate seal must have the permission to
+# pause these contracts at the time of the sealing.
+# Sealing can be partial, meaning the committee may decide to pause only a subset of this list,
+# though GateSeal will still expire immediately.
 
 # The duration of the seal in seconds. This period cannot exceed 14 days. 
 # The DAO may decide to resume the contracts prematurely via the DAO voting process.
 SEAL_DURATION_SECONDS: immutable(uint256)
 
-# The addresses of pausable contracts. The gate seal must have the permission to
-# pause these contracts at the time of the sealing.
-# Sealing can be partial, meaning the committee may decide to pause only a subset of this list,
-# though GateSeal will still expire immediately.
 sealables: DynArray[address, MAX_SEALABLES]
-
-# A unix epoch timestamp starting from which GateSeal is completely unusable
-# and a new GateSeal will have to be set up. This timestamp will be changed
-# upon sealing to expire GateSeal immediately which will revert any consecutive sealings.
 expiry_timestamp: uint256
-
-
-@external
+@deploy
 def __init__(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
     _expiry_timestamp: uint256
 ):
-    assert _sealing_committee != empty(address), "sealing committee: zero address"
-    assert _seal_duration_seconds >= MIN_SEAL_DURATION_SECONDS, "seal duration: too short"
-    assert _seal_duration_seconds <= MAX_SEAL_DURATION_SECONDS, "seal duration: exceeds max"
-    assert len(_sealables) > 0, "sealables: empty list"
-    assert _expiry_timestamp > block.timestamp, "expiry timestamp: must be in the future"
-    assert _expiry_timestamp <= block.timestamp + MAX_EXPIRY_PERIOD_SECONDS, "expiry timestamp: exceeds max expiry period"
-    for sealable in _sealables:
-        assert sealable != empty(address), "sealables: includes zero address"
-    assert not self._has_duplicates(_sealables), "sealables: includes duplicates"
+    assert _sealing_committee != empty(address), SEALING_COMMITTEE_ZERO
+    assert _seal_duration_seconds >= MIN_SEAL_DURATION_SECONDS, SEAL_DURATION_TOO_SHORT
+    assert _seal_duration_seconds <= MAX_SEAL_DURATION_SECONDS, SEAL_DURATION_EXCEEDS_MAX
+    assert len(_sealables) > 0, SEALABLES_EMPTY_LIST
+    assert _expiry_timestamp > block.timestamp, EXPIRY_MUST_BE_FUTURE
+    assert _expiry_timestamp <= block.timestamp + MAX_EXPIRY_PERIOD_SECONDS, EXPIRY_EXCEEDS_MAX
+    for sealable: address in _sealables:
+        assert sealable != empty(address), SEALABLES_INCLUDES_ZERO
+    assert not self._has_duplicates(_sealables), SEALABLES_INCLUDES_DUPLICATES
 
     SEALING_COMMITTEE = _sealing_committee
     SEAL_DURATION_SECONDS = _seal_duration_seconds
@@ -155,8 +166,8 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
     failed_indexes: DynArray[uint256, MAX_SEALABLES] = []
     sealable_index: uint256 = 0
 
-    for sealable in _sealables:
-        assert sealable in self.sealables, "sealables: includes a non-sealable"
+    for sealable: address in _sealables:
+        assert sealable in self.sealables, SEALABLE_NOT_IN_LIST
 
         success: bool = False
         response: Bytes[32] = b""
@@ -167,13 +178,19 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
         # for details, see https://docs.vyperlang.org/en/stable/built-in-functions.html#raw_call
         success, response = raw_call(
             sealable,
-            _abi_encode(SEAL_DURATION_SECONDS, method_id=method_id("pauseFor(uint256)")),
+            abi_encode(SEAL_DURATION_SECONDS, method_id=method_id("pauseFor(uint256)")),
             max_outsize=32,
             revert_on_failure=False
         )
         
-        if success and IPausableUntil(sealable).isPaused():
-            log Sealed(self, SEALING_COMMITTEE, SEAL_DURATION_SECONDS, sealable, block.timestamp)
+        if success and staticcall IPausableUntil(sealable).isPaused():
+            log Sealed(
+                gate_seal=self,
+                sealed_by=SEALING_COMMITTEE,
+                sealed_for=SEAL_DURATION_SECONDS,
+                sealable=sealable,
+                sealed_at=block.timestamp
+            )
         else:
             failed_indexes.append(sealable_index)
     
@@ -202,7 +219,7 @@ def _has_duplicates(_sealables: DynArray[address, MAX_SEALABLES]) -> bool:
     """
     unique: DynArray[address, MAX_SEALABLES] = []
 
-    for sealable in _sealables:
+    for sealable: address in _sealables:
         if sealable in unique:
             return True
         unique.append(sealable)
@@ -214,7 +231,7 @@ def _has_duplicates(_sealables: DynArray[address, MAX_SEALABLES]) -> bool:
 @pure
 def _to_error_string(_failed_indexes: DynArray[uint256, MAX_SEALABLES]) -> String[78]:
     """
-    @notice converts a list of indexes into an error message to faciliate debugging
+    @notice converts a list of indexes into an error message to facilitate debugging
     @dev    The indexes in the error message are given in the descending order to avoid
             losing leading zeros when casting to string,
 
@@ -225,7 +242,7 @@ def _to_error_string(_failed_indexes: DynArray[uint256, MAX_SEALABLES]) -> Strin
     loop_index: uint256 = 0
 
     # convert failed indexes to a decimal representation
-    for failed_index in _failed_indexes:
+    for failed_index: uint256 in _failed_indexes:
         indexes_as_decimal += failed_index * 10 ** loop_index
         loop_index += 1
 

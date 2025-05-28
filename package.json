@@ -5,6 +5,11 @@
   "author": "Azat Serikov <azatsdev@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "hardhat": "^2.12.6"
-  }
+    "hardhat": "^2.24.1"
+  },
+  "engines": {
+    "node": ">=18 <21",
+    "yarn": ">=1.22.22"
+  },
+  "engineStrict": true
 }

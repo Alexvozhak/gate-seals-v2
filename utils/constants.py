@@ -1,5 +1,5 @@
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
+BLUEPRINT_ZERO_ADDRESS = "blueprint: zero address"
 MIN_SEALABLES = 1
 MAX_SEALABLES = 8
 
@@ -18,3 +18,14 @@ MAINNET_ID = 1
 GOERLI_ID = 5
 HOLESKY_ID = 17000
 HOODI_ID = 560048
+
+BLUEPRINT_ZERO_ADDRESS = "blueprint: zero address"
+SEALABLE_NOT_IN_LIST = "sealables: includes a non-sealable"
+SEALING_COMMITTEE_ZERO = "sealing committee: zero address"
+SEAL_DURATION_TOO_SHORT = "seal duration: too short"
+SEAL_DURATION_EXCEEDS_MAX = "seal duration: exceeds max"
+SEALABLES_EMPTY_LIST = "sealables: empty list"
+EXPIRY_MUST_BE_FUTURE = "expiry timestamp: must be in the future"
+EXPIRY_EXCEEDS_MAX = "expiry timestamp: exceeds max expiry period"
+SEALABLES_INCLUDES_ZERO = "sealables: includes zero address"
+SEALABLES_INCLUDES_DUPLICATES = "sealables: includes duplicates"
