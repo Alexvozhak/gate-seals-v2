@@ -89,7 +89,7 @@ flowchart LR
 This project was developed using these dependencies with their exact versions listed below:
 - Python 3.10.13
 - Poetry 2.1.3
-- Node.js v18.20.8
+- Node.js v22.16.0
 - Yarn 1.22.22
 
 Other versions may work as well but were not tested at all.

@@ -8,7 +8,7 @@
     "hardhat": "^2.24.1"
   },
   "engines": {
-    "node": ">=18 <21",
+    "node": ">=18 <23",
     "yarn": ">=1.22.22"
   },
   "engineStrict": true
