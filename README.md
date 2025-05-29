@@ -12,12 +12,17 @@ A GateSeal is a contract that allows the designated account to instantly put a s
 
 To put such crucial components of the Lido protocol as `WithdrawalQueue` and `ValidatorExitBus` on hold, the DAO must hold a vote which may take up to several days to pass. GateSeals provide a way to temporarily pause these contracts immediately if the emergency calls for a swifter response. This will give the Lido DAO the time to come up with a solution, hold a vote, implement changes, etc.
 
-Each GateSeal is operated by a committee, essentially a multisig account responsible for pulling the break in case things go awry. However, authorizing a committee to pause/resume the protocol withdrawals would be utterly reckless which is why GateSeals have a number of safeguards in place:
+Each GateSeal is operated by a committee, essentially a multisig account responsible for pulling the brake in case things go awry. However, authorizing a committee to pause/resume the protocol withdrawals would be utterly reckless which is why GateSeals have a number of safeguards in place:
 - each GateSeal can only be activated only once and becomes unusable immediately after,
-- each GateSeal can only be activated within its expiry period of 1 year maximum and becomes unusable past its expiry timestamp even if it was never triggered,
-- the pause duration set at construction time is limited to 14 days.
+- the expiry period must be between 1 and 3 years and the seal becomes unusable past this timestamp even if it was never triggered,
+- at deployment the DAO chooses how many extensions are available and how long each extension lasts,
+- only the DAO may extend the expiry, provided that:
+  - the GateSeal has not been triggered
+  - extensions remain
+  - the GateSeal has not expired
+- the pause duration set at construction time is limited to 21 days.
 
-Thus, the biggest damage a compromised GateSeal multisig can inflict is to pause withdrawals for 14 days, given the DAO does not resume withdrawals sooner via the governance voting.
+Thus, the biggest damage a compromised GateSeal multisig can inflict is to pause withdrawals for 21 days, given the DAO does not resume withdrawals sooner via the governance voting.
 
 With all that said, it still is undesirable for a decentralized protocol to rely on a multisig in any capacity. Which is why GateSeals are only a temporary solution; their limited lifespan and one-time use design also act as a kind of "inconvenience bomb", in that once expired, the GateSeal must be replaced and setup anew.
 
@@ -29,14 +34,17 @@ A GateSeal is set up with an immutable configuration at the time of construction
 - the sealing committee, an account responsible for triggering the seal,
 - the seal duration, a period for which the contracts will be sealed,
 - the sealables, a list of contracts to be sealed,
-- the expiry period, a period after which the GateSeal becomes unusable. 
+- the expiry period, a period after which the GateSeal becomes unusable.
+- the DAO allowed to extend the expiry,
+- the number of extensions available,
+- the extension duration applied on each extend.
 
-Important to note, that GateSeals do not bypass the access control settings for pausable contracts, which is why GateSeals must be given the appropriate permissions beforehand. If and when an emergency arises, the sealing committee simply calls the seal function and puts the contracts on pause for the set duration. 
-
-## How are GateSeals created?
+Important to note, that GateSeals do not bypass the access control settings for
+pausable contracts, which is why GateSeals must be given the appropriate permissions beforehand. If the seal has not yet been triggered and has not expired, the DAO can call `extend` to push the expiry forward using one of the remaining extensions. In an emergency the sealing committee simply calls the `seal` function and puts the contracts on pause for the set duration.
 
 GateSeals are created using the GateSealFactory. The factory uses the blueprint pattern whereby new GateSeals are deployed using the initcode (blueprint) stored onchain. The blueprint is essentially a broken GateSeal that can only be used to create new GateSeals.
 
+The factory's `create_gate_seal` function takes the DAO address, the number of allowed extensions and the extension duration alongside the original parameters.
 While Vyper offers other ways to create new contracts, we opted to use the blueprint pattern because it creates a fully autonomous contract without any dependencies. Unlike other contract-creating functions, [`create_from_blueprint`](https://docs.vyperlang.org/en/stable/built-in-functions.html#chain-interaction) invokes the constructor of the contract, thus, helping avoid the initilization shenanigans.
 
 The blueprint follows the [EIP-5202](https://eips.ethereum.org/EIPS/eip-5202) format, which includes a header that makes the contract uncallable and specifies the version. 

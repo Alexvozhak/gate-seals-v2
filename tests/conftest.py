@@ -59,12 +59,18 @@ def gate_seal(
     seal_duration_seconds,
     sealables,
     expiry_timestamp,
+    dao_agent,
+    extensions,
+    extension_duration_seconds,
 ):
     transaction = gate_seal_factory.create_gate_seal(
         sealing_committee,
         seal_duration_seconds,
         sealables,
         expiry_timestamp,
+        dao_agent,
+        extensions,
+        extension_duration_seconds,
         sender=deployer,
     )
 
@@ -93,6 +99,16 @@ def seal_duration_seconds(day):
 @pytest.fixture(scope="function")
 def expiry_timestamp(now):
     return now + MAX_EXPIRY_PERIOD_SECONDS
+
+
+@pytest.fixture(scope="session")
+def extensions():
+    return 2
+
+
+@pytest.fixture(scope="session")
+def extension_duration_seconds(day):
+    return day * 30 * 6
 
 
 @pytest.fixture(scope="function")

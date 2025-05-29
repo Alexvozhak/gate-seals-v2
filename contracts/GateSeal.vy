@@ -23,8 +23,8 @@
      sealables are pausable contracts that implement `pauseFor(duration)` interface.
 """
 
-# The maximum GateSeal expiry duration is 1 year.
-MAX_EXPIRY_PERIOD_DAYS: constant(uint256) = 365
+# The maximum GateSeal expiry duration is 3 years.
+MAX_EXPIRY_PERIOD_DAYS: constant(uint256) = 365 * 3
 MAX_EXPIRY_PERIOD_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_EXPIRY_PERIOD_DAYS
 
 interface IPausableUntil:
@@ -51,11 +51,11 @@ SECONDS_PER_DAY: constant(uint256) = 60 * 60 * 24
 MIN_SEAL_DURATION_DAYS: constant(uint256) = 4
 MIN_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MIN_SEAL_DURATION_DAYS
 
-# The maximum allowed seal duration is 14 days.
+# The maximum allowed seal duration is 21 days.
 # Anything higher than that may be too long of a disruption for the protocol.
 # Keep in mind, that the DAO still retains the ability to resume the contracts
 # (or, in the GateSeal terms, "break the seal") prematurely.
-MAX_SEAL_DURATION_DAYS: constant(uint256) = 14
+MAX_SEAL_DURATION_DAYS: constant(uint256) = 21
 MAX_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_SEAL_DURATION_DAYS
 
 # The maximum number of sealables is 8.
@@ -74,6 +74,11 @@ EXPIRY_MUST_BE_FUTURE: constant(String[39]) = "expiry timestamp: must be in the 
 EXPIRY_EXCEEDS_MAX: constant(String[43]) = "expiry timestamp: exceeds max expiry period"
 SEALABLES_INCLUDES_ZERO: constant(String[32]) = "sealables: includes zero address"
 SEALABLES_INCLUDES_DUPLICATES: constant(String[30]) = "sealables: includes duplicates"
+DAO_ZERO_ADDRESS: constant(String[18]) = "dao: zero address"
+EXTENSION_DURATION_ZERO: constant(String[24]) = "extension duration: zero"
+SENDER_NOT_DAO: constant(String[17]) = "sender: not DAO"
+EXTENSIONS_EXHAUSTED: constant(String[22]) = "extensions: exhausted"
+GATE_SEAL_EXPIRED: constant(String[18]) = "gate seal: expired"
 
 
 # To simplify the code, we chose not to implement committees in GateSeals.
@@ -86,18 +91,26 @@ SEALING_COMMITTEE: immutable(address)
 # Sealing can be partial, meaning the committee may decide to pause only a subset of this list,
 # though GateSeal will still expire immediately.
 
-# The duration of the seal in seconds. This period cannot exceed 14 days. 
+# The duration of the seal in seconds. This period cannot exceed 21 days.
 # The DAO may decide to resume the contracts prematurely via the DAO voting process.
 SEAL_DURATION_SECONDS: immutable(uint256)
 
+DAO: immutable(address)
+EXTENSION_DURATION_SECONDS: immutable(uint256)
+
 sealables: DynArray[address, MAX_SEALABLES]
 expiry_timestamp: uint256
+extensions_remaining: uint256
+sealed: bool
 @deploy
 def __init__(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _expiry_timestamp: uint256
+    _expiry_timestamp: uint256,
+    _dao: address,
+    _extensions: uint256,
+    _extension_duration_seconds: uint256
 ):
     assert _sealing_committee != empty(address), SEALING_COMMITTEE_ZERO
     assert _seal_duration_seconds >= MIN_SEAL_DURATION_SECONDS, SEAL_DURATION_TOO_SHORT
@@ -105,14 +118,19 @@ def __init__(
     assert len(_sealables) > 0, SEALABLES_EMPTY_LIST
     assert _expiry_timestamp > block.timestamp, EXPIRY_MUST_BE_FUTURE
     assert _expiry_timestamp <= block.timestamp + MAX_EXPIRY_PERIOD_SECONDS, EXPIRY_EXCEEDS_MAX
+    assert _dao != empty(address), DAO_ZERO_ADDRESS
+    assert _extension_duration_seconds > 0, EXTENSION_DURATION_ZERO
     for sealable: address in _sealables:
         assert sealable != empty(address), SEALABLES_INCLUDES_ZERO
     assert not self._has_duplicates(_sealables), SEALABLES_INCLUDES_DUPLICATES
 
     SEALING_COMMITTEE = _sealing_committee
     SEAL_DURATION_SECONDS = _seal_duration_seconds
+    DAO = _dao
+    EXTENSION_DURATION_SECONDS = _extension_duration_seconds
     self.sealables = _sealables
     self.expiry_timestamp = _expiry_timestamp
+    self.extensions_remaining = _extensions
 
 
 @external
@@ -141,8 +159,41 @@ def get_expiry_timestamp() -> uint256:
 
 @external
 @view
+def get_dao() -> address:
+    return DAO
+
+
+@external
+@view
+def get_extension_duration_seconds() -> uint256:
+    return EXTENSION_DURATION_SECONDS
+
+
+@external
+@view
+def get_extensions_remaining() -> uint256:
+    return self.extensions_remaining
+
+
+@external
+@view
 def is_expired() -> bool:
     return self._is_expired()
+
+
+@external
+def extend():
+    """
+    @notice Extend the GateSeal expiry.
+    @dev    Can be called only by DAO while the seal hasn't been used and not expired.
+    """
+    assert msg.sender == DAO, SENDER_NOT_DAO
+    assert self.expiry_timestamp > block.timestamp, GATE_SEAL_EXPIRED
+    assert self.extensions_remaining > 0, EXTENSIONS_EXHAUSTED
+
+
+    self.expiry_timestamp += EXTENSION_DURATION_SECONDS
+    self.extensions_remaining -= 1
 
 
 @external
@@ -153,7 +204,7 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
     @param _sealables a list of sealables to seal; may include all or only a subset.
     """
     assert msg.sender == SEALING_COMMITTEE, "sender: not SEALING_COMMITTEE"
-    assert not self._is_expired(), "gate seal: expired"
+    assert not self._is_expired(), GATE_SEAL_EXPIRED
     assert len(_sealables) > 0, "sealables: empty subset"
     assert not self._has_duplicates(_sealables), "sealables: includes duplicates"
 
@@ -208,6 +259,7 @@ def _is_expired() -> bool:
 @internal
 def _expire_immediately():
     self.expiry_timestamp = block.timestamp
+    self.extensions_remaining = 0
 
 
 @internal
