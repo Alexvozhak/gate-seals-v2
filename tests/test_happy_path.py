@@ -35,8 +35,8 @@ def test_happy_path(networks, chain, project, accounts):
     EXPIRY_DURATION = 60 * 60 * 24 * 365 * 3  # 3 years
 
     # Step 6. Create a GateSeal using the factory
-    EXTENSIONS = 2
-    EXTENSION_DURATION = 60 * 60 * 24 * 30 * 6  # 6 months
+    PROLONGATIONS = 2
+    PROLONGATION_DURATION = 60 * 60 * 24 * 30 * 6  # 6 months
 
     transaction = gate_seal_factory.create_gate_seal(
         SEALING_COMMITTEE,
@@ -44,8 +44,8 @@ def test_happy_path(networks, chain, project, accounts):
         SEALABLES,
         now + EXPIRY_DURATION,
         DEPLOYER,
-        EXTENSIONS,
-        EXTENSION_DURATION,
+        PROLONGATIONS,
+        PROLONGATION_DURATION,
         sender=DEPLOYER,
     )
 

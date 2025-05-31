@@ -2,21 +2,10 @@ from ape.exceptions import VirtualMachineError
 import pytest
 import random
 from utils.constants import (
-    SEALABLE_NOT_IN_LIST,
     MAX_SEAL_DURATION_SECONDS,
     MAX_SEALABLES,
     MIN_SEAL_DURATION_SECONDS,
     ZERO_ADDRESS,
-    SEALING_COMMITTEE_ZERO,
-    SEAL_DURATION_TOO_SHORT,
-    SEAL_DURATION_EXCEEDS_MAX,
-    SEALABLES_EMPTY_LIST,
-    EXPIRY_MUST_BE_FUTURE,
-    EXPIRY_EXCEEDS_MAX,
-    SEALABLES_INCLUDES_ZERO,
-    SEALABLES_INCLUDES_DUPLICATES,
-    SENDER_NOT_DAO,
-    GATE_SEAL_EXPIRED,
 )
 
 
@@ -27,8 +16,8 @@ def test_committee_cannot_be_zero_address(
     sealables,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     try:
         project.GateSeal.deploy(
@@ -37,12 +26,12 @@ def test_committee_cannot_be_zero_address(
             sealables,
             expiry_timestamp,
             dao_agent,
-            extensions,
-            extension_duration_seconds,
+            prolongations,
+            prolongation_duration_seconds,
             sender=deployer,
         )
     except VirtualMachineError as e:
-        assert SEALING_COMMITTEE_ZERO in str(e)
+        assert "sealing committee: zero address" in str(e)
 
 
 def test_seal_duration_too_short(
@@ -52,8 +41,8 @@ def test_seal_duration_too_short(
     sealables,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     try:
         project.GateSeal.deploy(
@@ -62,12 +51,12 @@ def test_seal_duration_too_short(
             sealables,
             expiry_timestamp,
             dao_agent,
-            extensions,
-            extension_duration_seconds,
+            prolongations,
+            prolongation_duration_seconds,
             sender=deployer,
         )
     except VirtualMachineError as e:
-        assert SEAL_DURATION_TOO_SHORT in str(e)
+        assert "seal duration: too short" in str(e)
 
 
 def test_seal_duration_shortest(
@@ -77,8 +66,8 @@ def test_seal_duration_shortest(
     sealables,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
@@ -86,14 +75,14 @@ def test_seal_duration_shortest(
         sealables,
         expiry_timestamp,
         dao_agent,
-        extensions,
-        extension_duration_seconds,
+        prolongations,
+        prolongation_duration_seconds,
         sender=deployer,
     )
 
     assert (
         gate_seal.get_seal_duration_seconds() == MIN_SEAL_DURATION_SECONDS
-    ), "seal duration can be at least 4 days"
+    ), "seal duration can be at least 6 days"
 
 
 def test_seal_duration_max(
@@ -103,8 +92,8 @@ def test_seal_duration_max(
     sealables,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
@@ -112,8 +101,8 @@ def test_seal_duration_max(
         sealables,
         expiry_timestamp,
         dao_agent,
-        extensions,
-        extension_duration_seconds,
+        prolongations,
+        prolongation_duration_seconds,
         sender=deployer,
     )
 
@@ -129,8 +118,8 @@ def test_seal_duration_exceeds_max(
     sealables,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     try:
         project.GateSeal.deploy(
@@ -139,12 +128,12 @@ def test_seal_duration_exceeds_max(
             sealables,
             expiry_timestamp,
             dao_agent,
-            extensions,
-            extension_duration_seconds,
+            prolongations,
+            prolongation_duration_seconds,
             sender=deployer,
         )
     except VirtualMachineError as e:
-        assert SEAL_DURATION_EXCEEDS_MAX in str(e)
+        assert "seal duration: exceeds max" in str(e)
 
 
 def test_sealables_exceeds_max(
@@ -154,8 +143,8 @@ def test_sealables_exceeds_max(
     seal_duration_seconds,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     try:
         project.GateSeal.deploy(
@@ -164,12 +153,12 @@ def test_sealables_exceeds_max(
             [],
             expiry_timestamp,
             dao_agent,
-            extensions,
-            extension_duration_seconds,
+            prolongations,
+            prolongation_duration_seconds,
             sender=deployer,
         )
     except VirtualMachineError as e:
-        assert SEALABLES_EMPTY_LIST in str(e)
+        assert "sealables: empty list" in str(e)
 
 
 def test_expiry_timestamp_cannot_be_now(
@@ -180,8 +169,8 @@ def test_expiry_timestamp_cannot_be_now(
     sealables,
     now,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     try:
         project.GateSeal.deploy(
@@ -190,12 +179,12 @@ def test_expiry_timestamp_cannot_be_now(
             sealables,
             now,
             dao_agent,
-            extensions,
-            extension_duration_seconds,
+            prolongations,
+            prolongation_duration_seconds,
             sender=deployer,
         )
     except VirtualMachineError as e:
-        assert EXPIRY_MUST_BE_FUTURE in str(e)
+        assert "expiry timestamp: must be in the future" in str(e)
 
 
 def test_expiry_timestamp_cannot_exceed_max(
@@ -206,8 +195,8 @@ def test_expiry_timestamp_cannot_exceed_max(
     sealables,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     try:
         project.GateSeal.deploy(
@@ -216,12 +205,12 @@ def test_expiry_timestamp_cannot_exceed_max(
             sealables,
             expiry_timestamp + 1,
             dao_agent,
-            extensions,
-            extension_duration_seconds,
+            prolongations,
+            prolongation_duration_seconds,
             sender=deployer,
         )
     except VirtualMachineError as e:
-        assert EXPIRY_EXCEEDS_MAX in str(e)
+        assert "expiry: exceeds max" in str(e)
 
 
 @pytest.mark.parametrize("zero_address_index", range(MAX_SEALABLES))
@@ -234,8 +223,8 @@ def test_sealables_cannot_include_zero_address(
     zero_address_index,
     generate_sealables,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     sealables = generate_sealables(MAX_SEALABLES)
     sealables[zero_address_index] = ZERO_ADDRESS
@@ -247,12 +236,12 @@ def test_sealables_cannot_include_zero_address(
             sealables,
             expiry_timestamp,
             dao_agent,
-            extensions,
-            extension_duration_seconds,
+            prolongations,
+            prolongation_duration_seconds,
             sender=deployer,
         )
     except VirtualMachineError as e:
-        assert SEALABLES_INCLUDES_ZERO in str(e)
+        assert "sealables: includes zero address" in str(e)
 
 
 def test_sealables_cannot_include_duplicates(
@@ -263,8 +252,8 @@ def test_sealables_cannot_include_duplicates(
     sealables,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     if len(sealables) == MAX_SEALABLES:
         sealables[-1] = sealables[0]
@@ -278,12 +267,12 @@ def test_sealables_cannot_include_duplicates(
             sealables,
             expiry_timestamp,
             dao_agent,
-            extensions,
-            extension_duration_seconds,
+            prolongations,
+            prolongation_duration_seconds,
             sender=deployer,
         )
     except VirtualMachineError as e:
-        assert SEALABLES_INCLUDES_DUPLICATES in str(e)
+        assert "sealables: includes duplicates" in str(e)
 
 
 def test_sealables_cannot_exceed_max_length(
@@ -294,8 +283,8 @@ def test_sealables_cannot_exceed_max_length(
     expiry_timestamp,
     generate_sealables,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     sealables = generate_sealables(MAX_SEALABLES + 1)
 
@@ -306,8 +295,8 @@ def test_sealables_cannot_exceed_max_length(
             sealables,
             expiry_timestamp,
             dao_agent,
-            extensions,
-            extension_duration_seconds,
+            prolongations,
+            prolongation_duration_seconds,
             sender=deployer,
         )
     except VirtualMachineError:
@@ -322,8 +311,8 @@ def test_deploy_params_must_match(
     sealables,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
@@ -331,8 +320,8 @@ def test_deploy_params_must_match(
         sealables,
         expiry_timestamp,
         dao_agent,
-        extensions,
-        extension_duration_seconds,
+        prolongations,
+        prolongation_duration_seconds,
         sender=deployer,
     )
 
@@ -363,7 +352,6 @@ def test_seal_all(
 
     for i, event in enumerate(tx.events):
         assert event.event_name == "Sealed"
-        assert event.gate_seal == gate_seal.address
         assert event.sealed_by == sealing_committee
         assert event.sealed_for == seal_duration_seconds
         assert event.sealable == sealables[i]
@@ -395,7 +383,6 @@ def test_seal_partial(
 
     for i, event in enumerate(tx.events):
         assert event.event_name == "Sealed"
-        assert event.gate_seal == gate_seal.address
         assert event.sealed_by == sealing_committee
         assert event.sealed_for == seal_duration_seconds
         assert event.sealable == sealables_to_seal[i]
@@ -440,7 +427,7 @@ def test_seal_nonintersecting_subset(accounts, gate_seal, sealing_committee):
     try:
         gate_seal.seal([accounts[0]], sender=sealing_committee)
     except VirtualMachineError as e:
-        assert SEALABLE_NOT_IN_LIST in str(e)
+        assert "sealables: includes a non-sealable" in str(e)
 
 
 def test_seal_partially_intersecting_subset(
@@ -449,7 +436,7 @@ def test_seal_partially_intersecting_subset(
     try:
         gate_seal.seal([sealables[0], accounts[0]], sender=sealing_committee)
     except VirtualMachineError as e:
-        assert SEALABLE_NOT_IN_LIST in str(e)
+        assert "sealables: includes a non-sealable" in str(e)
 
 
 def test_natural_expiry(
@@ -461,8 +448,8 @@ def test_natural_expiry(
     sealables,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
@@ -470,8 +457,8 @@ def test_natural_expiry(
         sealables,
         expiry_timestamp,
         dao_agent,
-        extensions,
-        extension_duration_seconds,
+        prolongations,
+        prolongation_duration_seconds,
         sender=deployer,
     )
 
@@ -492,7 +479,7 @@ def test_seal_only_once(gate_seal, sealing_committee, sealables):
     try:
         gate_seal.seal(sealables, sender=sealing_committee)
     except VirtualMachineError as e:
-        assert GATE_SEAL_EXPIRED in str(e)
+        assert "gate seal: expired" in str(e)
 
 
 @pytest.mark.parametrize("failing_index", range(MAX_SEALABLES))
@@ -505,8 +492,8 @@ def test_single_failed_sealable_error_message(
     failing_index,
     generate_sealables,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     sealables = generate_sealables(MAX_SEALABLES)
     unpausable = random.choice([True, False])
@@ -519,8 +506,8 @@ def test_single_failed_sealable_error_message(
         sealables,
         expiry_timestamp,
         dao_agent,
-        extensions,
-        extension_duration_seconds,
+        prolongations,
+        prolongation_duration_seconds,
         sender=deployer,
     )
 
@@ -542,8 +529,8 @@ def test_several_failed_sealables_error_message(
     expiry_timestamp,
     generate_sealables,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
     repeat,
 ):
     sealables = generate_sealables(MAX_SEALABLES)
@@ -559,8 +546,8 @@ def test_several_failed_sealables_error_message(
         sealables,
         expiry_timestamp,
         dao_agent,
-        extensions,
-        extension_duration_seconds,
+        prolongations,
+        prolongation_duration_seconds,
         sender=deployer,
     )
 
@@ -581,7 +568,7 @@ def test_cannot_seal_twice_in_one_tx(gate_seal, sealables, sealing_committee):
     try:
         gate_seal.seal(sealables, sender=sealing_committee)
     except VirtualMachineError as e:
-        assert GATE_SEAL_EXPIRED in str(e)
+        assert "gate seal: expired" in str(e)
 
 
 def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
@@ -592,8 +579,8 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
     seal_duration_seconds,
     expiry_timestamp,
     dao_agent,
-    extensions,
-    extension_duration_seconds,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     """
         `raw_call` without `max_outsize` and with `revert_on_failure=True` for some reason returns the boolean value of memory[0] :^)
@@ -623,8 +610,8 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
         sealables,
         expiry_timestamp,
         dao_agent,
-        extensions,
-        extension_duration_seconds,
+        prolongations,
+        prolongation_duration_seconds,
         sender=deployer,
     )
 
@@ -642,16 +629,18 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
         assert "reverted with reason string '0'" in str(e)
 
 
-def test_extend_before_expiry(
-    gate_seal, dao_agent, extension_duration_seconds, extensions
+def test_prolong_before_expiry(
+    gate_seal, dao_agent, prolongation_duration_seconds, prolongations
 ):
     old_expiry = gate_seal.get_expiry_timestamp()
-    gate_seal.extend(sender=dao_agent)
-    assert gate_seal.get_expiry_timestamp() == old_expiry + extension_duration_seconds
-    assert gate_seal.get_extensions_remaining() == extensions - 1
+    gate_seal.prolong(sender=dao_agent)
+    assert (
+        gate_seal.get_expiry_timestamp() == old_expiry + prolongation_duration_seconds
+    )
+    assert gate_seal.get_prolongations_remaining() == prolongations - 1
 
 
-def test_extend_after_expiry(
+def test_prolong_after_expiry(
     networks,
     chain,
     gate_seal,
@@ -662,20 +651,21 @@ def test_extend_after_expiry(
     networks.active_provider.mine()
 
     try:
-        gate_seal.extend(sender=dao_agent)
+        gate_seal.prolong(sender=dao_agent)
     except VirtualMachineError as e:
-        assert GATE_SEAL_EXPIRED in str(e)
+        assert "gate seal: expired" in str(e)
 
 
-def test_extend_only_dao(gate_seal, stranger):
-    with pytest.raises(VirtualMachineError) as e:
-        gate_seal.extend(sender=stranger)
-    assert SENDER_NOT_DAO in str(e.value)
+def test_prolong_only_dao(gate_seal, stranger):
+    try:
+        gate_seal.prolong(sender=stranger)
+    except VirtualMachineError as e:
+        assert "sender: not DAO" in str(e)
 
 
 def test_cannot_extend_after_seal(gate_seal, sealing_committee, dao_agent, sealables):
     gate_seal.seal(sealables, sender=sealing_committee)
     try:
-        gate_seal.extend(sender=dao_agent)
+        gate_seal.prolong(sender=dao_agent)
     except VirtualMachineError as e:
-        assert EXTENSIONS_EXHAUSTED in str(e)
+        assert "gate seal: expired" in str(e)

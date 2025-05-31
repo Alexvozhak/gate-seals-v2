@@ -1,6 +1,5 @@
 from ape.exceptions import VirtualMachineError
 from utils.blueprint import verify_eip5202_blueprint
-from utils.constants import BLUEPRINT_ZERO_ADDRESS
 from ape.utils import ZERO_ADDRESS
 
 
@@ -9,7 +8,7 @@ def test_factory_blueprint_cannot_be_zero_address(project, deployer):
         project.GateSealFactory.deploy(ZERO_ADDRESS, sender=deployer)
         assert False, "Should have reverted"
     except VirtualMachineError as e:
-        assert BLUEPRINT_ZERO_ADDRESS in str(e)
+        assert "blueprint: zero address" in str(e)
 
 
 def test_blueprint_not_callable(project, blueprint_address):

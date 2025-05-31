@@ -5,7 +5,7 @@ MAX_SEALABLES = 8
 
 SECONDS_PER_DAY = 60 * 60 * 24
 
-MIN_SEAL_DURATION_DAYS = 4
+MIN_SEAL_DURATION_DAYS = 6
 MIN_SEAL_DURATION_SECONDS = SECONDS_PER_DAY * MIN_SEAL_DURATION_DAYS
 
 MAX_SEAL_DURATION_DAYS = 21
@@ -18,20 +18,3 @@ MAINNET_ID = 1
 GOERLI_ID = 5
 HOLESKY_ID = 17000
 HOODI_ID = 560048
-
-BLUEPRINT_ZERO_ADDRESS = "blueprint: zero address"
-SEALABLE_NOT_IN_LIST = "sealables: includes a non-sealable"
-SEALING_COMMITTEE_ZERO = "sealing committee: zero address"
-SEAL_DURATION_TOO_SHORT = "seal duration: too short"
-SEAL_DURATION_EXCEEDS_MAX = "seal duration: exceeds max"
-SEALABLES_EMPTY_LIST = "sealables: empty list"
-EXPIRY_MUST_BE_FUTURE = "expiry timestamp: must be in the future"
-EXPIRY_EXCEEDS_MAX = "expiry timestamp: exceeds max expiry period"
-SEALABLES_INCLUDES_ZERO = "sealables: includes zero address"
-SEALABLES_INCLUDES_DUPLICATES = "sealables: includes duplicates"
-DAO_ZERO_ADDRESS = "dao: zero address"
-EXTENSION_DURATION_ZERO = "extension duration: zero"
-SENDER_NOT_DAO = "sender: not DAO"
-GATE_SEAL_SEALED = "gate seal: sealed"
-EXTENSIONS_EXHAUSTED = "extensions: exhausted"
-GATE_SEAL_EXPIRED = "gate seal: expired"
