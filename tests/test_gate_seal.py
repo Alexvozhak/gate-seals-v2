@@ -7,6 +7,7 @@ from utils.constants import (
     MIN_SEAL_DURATION_SECONDS,
     ZERO_ADDRESS,
     MAX_PROLONGATIONS,
+    MAX_PROLONGATION_DURATION_SECONDS,
 )
 
 
@@ -664,3 +665,26 @@ def test_prolongations_cannot_exceed_max(
         )
     except VirtualMachineError as e:
         assert "prolongations: exceeds max" in str(e)
+
+
+def test_prolongation_duration_cannot_exceed_max(
+    project,
+    deployer,
+    sealing_committee,
+    seal_duration_seconds,
+    sealables,
+    expiry_timestamp,
+    prolongations,
+):
+    try:
+        project.GateSeal.deploy(
+            sealing_committee,
+            seal_duration_seconds,
+            sealables,
+            expiry_timestamp,
+            prolongations,
+            MAX_PROLONGATION_DURATION_SECONDS + 1,
+            sender=deployer,
+        )
+    except VirtualMachineError as e:
+        assert "prolongation duration: exceeds max" in str(e)
