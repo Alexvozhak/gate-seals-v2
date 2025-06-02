@@ -62,7 +62,6 @@ def create_gate_seal(
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
     _expiry_timestamp: uint256,
-    _dao: address,
     _prolongations: uint256,
     _prolongation_duration_seconds: uint256
 ):
@@ -82,7 +81,6 @@ def create_gate_seal(
         _seal_duration_seconds,
         _sealables,
         _expiry_timestamp,
-        _dao,
         _prolongations,
         _prolongation_duration_seconds,
         code_offset=EIP5202_CODE_OFFSET,

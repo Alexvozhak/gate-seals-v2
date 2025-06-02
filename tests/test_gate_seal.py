@@ -15,7 +15,6 @@ def test_committee_cannot_be_zero_address(
     seal_duration_seconds,
     sealables,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -25,7 +24,6 @@ def test_committee_cannot_be_zero_address(
             seal_duration_seconds,
             sealables,
             expiry_timestamp,
-            dao_agent,
             prolongations,
             prolongation_duration_seconds,
             sender=deployer,
@@ -40,7 +38,6 @@ def test_seal_duration_too_short(
     sealing_committee,
     sealables,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -50,7 +47,6 @@ def test_seal_duration_too_short(
             MIN_SEAL_DURATION_SECONDS - 1,
             sealables,
             expiry_timestamp,
-            dao_agent,
             prolongations,
             prolongation_duration_seconds,
             sender=deployer,
@@ -65,7 +61,6 @@ def test_seal_duration_shortest(
     sealing_committee,
     sealables,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -74,7 +69,6 @@ def test_seal_duration_shortest(
         MIN_SEAL_DURATION_SECONDS,
         sealables,
         expiry_timestamp,
-        dao_agent,
         prolongations,
         prolongation_duration_seconds,
         sender=deployer,
@@ -91,7 +85,6 @@ def test_seal_duration_max(
     sealing_committee,
     sealables,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -100,7 +93,6 @@ def test_seal_duration_max(
         MAX_SEAL_DURATION_SECONDS,
         sealables,
         expiry_timestamp,
-        dao_agent,
         prolongations,
         prolongation_duration_seconds,
         sender=deployer,
@@ -117,7 +109,6 @@ def test_seal_duration_exceeds_max(
     sealing_committee,
     sealables,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -127,7 +118,6 @@ def test_seal_duration_exceeds_max(
             MAX_SEAL_DURATION_SECONDS + 1,
             sealables,
             expiry_timestamp,
-            dao_agent,
             prolongations,
             prolongation_duration_seconds,
             sender=deployer,
@@ -142,7 +132,6 @@ def test_sealables_exceeds_max(
     sealing_committee,
     seal_duration_seconds,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -152,7 +141,6 @@ def test_sealables_exceeds_max(
             seal_duration_seconds,
             [],
             expiry_timestamp,
-            dao_agent,
             prolongations,
             prolongation_duration_seconds,
             sender=deployer,
@@ -168,7 +156,6 @@ def test_expiry_timestamp_cannot_be_now(
     seal_duration_seconds,
     sealables,
     now,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -178,7 +165,6 @@ def test_expiry_timestamp_cannot_be_now(
             seal_duration_seconds,
             sealables,
             now,
-            dao_agent,
             prolongations,
             prolongation_duration_seconds,
             sender=deployer,
@@ -194,7 +180,6 @@ def test_expiry_timestamp_cannot_exceed_max(
     seal_duration_seconds,
     sealables,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -204,7 +189,6 @@ def test_expiry_timestamp_cannot_exceed_max(
             seal_duration_seconds,
             sealables,
             expiry_timestamp + 1,
-            dao_agent,
             prolongations,
             prolongation_duration_seconds,
             sender=deployer,
@@ -222,7 +206,6 @@ def test_sealables_cannot_include_zero_address(
     expiry_timestamp,
     zero_address_index,
     generate_sealables,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -235,7 +218,6 @@ def test_sealables_cannot_include_zero_address(
             seal_duration_seconds,
             sealables,
             expiry_timestamp,
-            dao_agent,
             prolongations,
             prolongation_duration_seconds,
             sender=deployer,
@@ -251,7 +233,6 @@ def test_sealables_cannot_include_duplicates(
     seal_duration_seconds,
     sealables,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -266,7 +247,6 @@ def test_sealables_cannot_include_duplicates(
             seal_duration_seconds,
             sealables,
             expiry_timestamp,
-            dao_agent,
             prolongations,
             prolongation_duration_seconds,
             sender=deployer,
@@ -282,7 +262,6 @@ def test_sealables_cannot_exceed_max_length(
     seal_duration_seconds,
     expiry_timestamp,
     generate_sealables,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -294,7 +273,6 @@ def test_sealables_cannot_exceed_max_length(
             seal_duration_seconds,
             sealables,
             expiry_timestamp,
-            dao_agent,
             prolongations,
             prolongation_duration_seconds,
             sender=deployer,
@@ -310,7 +288,6 @@ def test_deploy_params_must_match(
     seal_duration_seconds,
     sealables,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -319,7 +296,6 @@ def test_deploy_params_must_match(
         seal_duration_seconds,
         sealables,
         expiry_timestamp,
-        dao_agent,
         prolongations,
         prolongation_duration_seconds,
         sender=deployer,
@@ -447,7 +423,6 @@ def test_natural_expiry(
     seal_duration_seconds,
     sealables,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -456,7 +431,6 @@ def test_natural_expiry(
         seal_duration_seconds,
         sealables,
         expiry_timestamp,
-        dao_agent,
         prolongations,
         prolongation_duration_seconds,
         sender=deployer,
@@ -491,7 +465,6 @@ def test_single_failed_sealable_error_message(
     expiry_timestamp,
     failing_index,
     generate_sealables,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -505,7 +478,6 @@ def test_single_failed_sealable_error_message(
         seal_duration_seconds,
         sealables,
         expiry_timestamp,
-        dao_agent,
         prolongations,
         prolongation_duration_seconds,
         sender=deployer,
@@ -528,7 +500,6 @@ def test_several_failed_sealables_error_message(
     seal_duration_seconds,
     expiry_timestamp,
     generate_sealables,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
     repeat,
@@ -545,7 +516,6 @@ def test_several_failed_sealables_error_message(
         seal_duration_seconds,
         sealables,
         expiry_timestamp,
-        dao_agent,
         prolongations,
         prolongation_duration_seconds,
         sender=deployer,
@@ -578,7 +548,6 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
     sealing_committee,
     seal_duration_seconds,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -609,7 +578,6 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
         seal_duration_seconds,
         sealables,
         expiry_timestamp,
-        dao_agent,
         prolongations,
         prolongation_duration_seconds,
         sender=deployer,
@@ -630,10 +598,13 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
 
 
 def test_prolong_before_expiry(
-    gate_seal, dao_agent, prolongation_duration_seconds, prolongations
+    gate_seal,
+    sealing_committee,
+    prolongation_duration_seconds,
+    prolongations,
 ):
     old_expiry = gate_seal.get_expiry_timestamp()
-    gate_seal.prolong(sender=dao_agent)
+    gate_seal.prolong(sender=sealing_committee)
     assert (
         gate_seal.get_expiry_timestamp() == old_expiry + prolongation_duration_seconds
     )
@@ -644,28 +615,28 @@ def test_prolong_after_expiry(
     networks,
     chain,
     gate_seal,
-    dao_agent,
+    sealing_committee,
     expiry_timestamp,
 ):
     networks.active_provider.set_timestamp(expiry_timestamp + 1)
     networks.active_provider.mine()
 
     try:
-        gate_seal.prolong(sender=dao_agent)
+        gate_seal.prolong(sender=sealing_committee)
     except VirtualMachineError as e:
         assert "gate seal: expired" in str(e)
 
 
-def test_prolong_only_dao(gate_seal, stranger):
+def test_prolong_only_committee(gate_seal, stranger):
     try:
         gate_seal.prolong(sender=stranger)
     except VirtualMachineError as e:
-        assert "sender: not DAO" in str(e)
+        assert "sender: not SEALING_COMMITTEE" in str(e)
 
 
-def test_cannot_extend_after_seal(gate_seal, sealing_committee, dao_agent, sealables):
+def test_cannot_prolong_after_seal(gate_seal, sealing_committee, sealables):
     gate_seal.seal(sealables, sender=sealing_committee)
     try:
-        gate_seal.prolong(sender=dao_agent)
+        gate_seal.prolong(sender=sealing_committee)
     except VirtualMachineError as e:
         assert "gate seal: expired" in str(e)

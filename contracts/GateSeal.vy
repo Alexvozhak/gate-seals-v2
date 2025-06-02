@@ -70,8 +70,7 @@ SEALING_COMMITTEE: immutable(address)
 # The DAO may decide to resume the contracts prematurely via the DAO voting process.
 SEAL_DURATION_SECONDS: immutable(uint256)
 
-# The DAO account that can extend the GateSeal.
-DAO: immutable(address)
+# The sealing committee extends the GateSeal to attest that the multisig is still active.
 
 # The duration of the prolongation in seconds.
 PROLONGATION_DURATION_SECONDS: immutable(uint256)
@@ -96,7 +95,6 @@ def __init__(
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
     _expiry_timestamp: uint256,
-    _dao: address,
     _prolongations: uint256,
     _prolongation_duration_seconds: uint256
 ):
@@ -106,7 +104,6 @@ def __init__(
     assert len(_sealables) > 0, "sealables: empty list"
     assert _expiry_timestamp > block.timestamp, "expiry timestamp: must be in the future"
     assert _expiry_timestamp <= block.timestamp + MAX_EXPIRY_PERIOD_SECONDS, "expiry timestamp: exceeds max expiry period"
-    assert _dao != empty(address), "dao: zero address"
     assert _prolongation_duration_seconds > 0, "prolongation duration: zero"
     for sealable: address in _sealables:
         assert sealable != empty(address), "sealables: includes zero address"
@@ -114,7 +111,6 @@ def __init__(
 
     SEALING_COMMITTEE = _sealing_committee
     SEAL_DURATION_SECONDS = _seal_duration_seconds
-    DAO = _dao
     PROLONGATION_DURATION_SECONDS = _prolongation_duration_seconds
     self.sealables = _sealables
     self.expiry_timestamp = _expiry_timestamp
@@ -147,13 +143,7 @@ def get_expiry_timestamp() -> uint256:
 
 @external
 @view
-def get_dao() -> address:
-    return DAO
-
-
-@external
-@view
-def get_prolongations_duration_seconds() -> uint256:
+def get_prolongation_duration_seconds() -> uint256:
     return PROLONGATION_DURATION_SECONDS
 
 
@@ -173,9 +163,9 @@ def is_expired() -> bool:
 def prolong():
     """
     @notice Prolong the GateSeal.
-    @dev    Can be called only by DAO while the seal hasn't been used and not expired.
+    @dev    Can be called only by the sealing committee while the seal hasn't been used and not expired.
     """
-    assert msg.sender == DAO, "sender: not DAO"
+    assert msg.sender == SEALING_COMMITTEE, "sender: not SEALING_COMMITTEE"
     assert not self._is_expired(), "gate seal: expired"
     assert self.prolongations_remaining > 0, "prolongations: exhausted"
 

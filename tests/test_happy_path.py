@@ -43,7 +43,6 @@ def test_happy_path(networks, chain, project, accounts):
         SEAL_DURATION_SECONDS,
         SEALABLES,
         now + EXPIRY_DURATION,
-        DEPLOYER,
         PROLONGATIONS,
         PROLONGATION_DURATION,
         sender=DEPLOYER,

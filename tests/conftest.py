@@ -17,18 +17,13 @@ def deployer(accounts):
 
 
 @pytest.fixture(scope="session")
-def dao_agent(accounts):
+def sealing_committee(accounts):
     return accounts[1]
 
 
 @pytest.fixture(scope="session")
-def sealing_committee(accounts):
-    return accounts[2]
-
-
-@pytest.fixture(scope="session")
 def stranger(accounts):
-    return accounts[3]
+    return accounts[2]
 
 
 """
@@ -59,7 +54,6 @@ def gate_seal(
     seal_duration_seconds,
     sealables,
     expiry_timestamp,
-    dao_agent,
     prolongations,
     prolongation_duration_seconds,
 ):
@@ -68,7 +62,6 @@ def gate_seal(
         seal_duration_seconds,
         sealables,
         expiry_timestamp,
-        dao_agent,
         prolongations,
         prolongation_duration_seconds,
         sender=deployer,
