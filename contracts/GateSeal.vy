@@ -60,6 +60,9 @@ MAX_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_SEAL_DURATI
 # is why we've opted to use a dynamic-size array.
 MAX_SEALABLES: constant(uint256) = 8
 
+# Maximum number of prolongations allowed
+MAX_PROLONGATIONS: constant(uint256) = 5
+
 # To simplify the code, we chose not to implement committees in GateSeals.
 # Instead, GateSeals are operated by a single account which must be a multisig.
 # The code does not perform any such checks but we pinky-promise that
@@ -105,6 +108,7 @@ def __init__(
     assert _expiry_timestamp > block.timestamp, "expiry timestamp: must be in the future"
     assert _expiry_timestamp <= block.timestamp + MAX_EXPIRY_PERIOD_SECONDS, "expiry timestamp: exceeds max expiry period"
     assert _prolongation_duration_seconds > 0, "prolongation duration: zero"
+    assert _prolongations <= MAX_PROLONGATIONS, "prolongations: exceeds max"
     for sealable: address in _sealables:
         assert sealable != empty(address), "sealables: includes zero address"
     assert not self._has_duplicates(_sealables), "sealables: includes duplicates"
