@@ -1,21 +1,27 @@
-from ape import reverts
-from ape.logging import logger
+from ape.exceptions import VirtualMachineError
 import pytest
 import random
-
-
 from utils.constants import (
+    SEALABLE_NOT_IN_LIST,
     MAX_SEAL_DURATION_SECONDS,
     MAX_SEALABLES,
     MIN_SEAL_DURATION_SECONDS,
     ZERO_ADDRESS,
+    SEALING_COMMITTEE_ZERO,
+    SEAL_DURATION_TOO_SHORT,
+    SEAL_DURATION_EXCEEDS_MAX,
+    SEALABLES_EMPTY_LIST,
+    EXPIRY_MUST_BE_FUTURE,
+    EXPIRY_EXCEEDS_MAX,
+    SEALABLES_INCLUDES_ZERO,
+    SEALABLES_INCLUDES_DUPLICATES,
 )
 
 
 def test_committee_cannot_be_zero_address(
     project, deployer, seal_duration_seconds, sealables, expiry_timestamp
 ):
-    with reverts("sealing committee: zero address"):
+    try:
         project.GateSeal.deploy(
             ZERO_ADDRESS,
             seal_duration_seconds,
@@ -23,12 +29,14 @@ def test_committee_cannot_be_zero_address(
             expiry_timestamp,
             sender=deployer,
         )
+    except VirtualMachineError as e:
+        assert SEALING_COMMITTEE_ZERO in str(e)
 
 
 def test_seal_duration_too_short(
     project, deployer, sealing_committee, sealables, expiry_timestamp
 ):
-    with reverts("seal duration: too short"):
+    try:
         project.GateSeal.deploy(
             sealing_committee,
             MIN_SEAL_DURATION_SECONDS - 1,
@@ -36,6 +44,8 @@ def test_seal_duration_too_short(
             expiry_timestamp,
             sender=deployer,
         )
+    except VirtualMachineError as e:
+        assert SEAL_DURATION_TOO_SHORT in str(e)
 
 
 def test_seal_duration_shortest(
@@ -81,7 +91,7 @@ def test_seal_duration_exceeds_max(
     sealables,
     expiry_timestamp,
 ):
-    with reverts("seal duration: exceeds max"):
+    try:
         project.GateSeal.deploy(
             sealing_committee,
             MAX_SEAL_DURATION_SECONDS + 1,
@@ -89,6 +99,8 @@ def test_seal_duration_exceeds_max(
             expiry_timestamp,
             sender=deployer,
         )
+    except VirtualMachineError as e:
+        assert SEAL_DURATION_EXCEEDS_MAX in str(e)
 
 
 def test_sealables_exceeds_max(
@@ -98,7 +110,7 @@ def test_sealables_exceeds_max(
     seal_duration_seconds,
     expiry_timestamp,
 ):
-    with reverts("sealables: empty list"):
+    try:
         project.GateSeal.deploy(
             sealing_committee,
             seal_duration_seconds,
@@ -106,15 +118,19 @@ def test_sealables_exceeds_max(
             expiry_timestamp,
             sender=deployer,
         )
+    except VirtualMachineError as e:
+        assert SEALABLES_EMPTY_LIST in str(e)
 
 
 def test_expiry_timestamp_cannot_be_now(
     project, deployer, sealing_committee, seal_duration_seconds, sealables, now
 ):
-    with reverts("expiry timestamp: must be in the future"):
+    try:
         project.GateSeal.deploy(
             sealing_committee, seal_duration_seconds, sealables, now, sender=deployer
         )
+    except VirtualMachineError as e:
+        assert EXPIRY_MUST_BE_FUTURE in str(e)
 
 
 def test_expiry_timestamp_cannot_exceed_max(
@@ -125,7 +141,7 @@ def test_expiry_timestamp_cannot_exceed_max(
     sealables,
     expiry_timestamp,
 ):
-    with reverts("expiry timestamp: exceeds max expiry period"):
+    try:
         project.GateSeal.deploy(
             sealing_committee,
             seal_duration_seconds,
@@ -133,6 +149,8 @@ def test_expiry_timestamp_cannot_exceed_max(
             expiry_timestamp + 1,
             sender=deployer,
         )
+    except VirtualMachineError as e:
+        assert EXPIRY_EXCEEDS_MAX in str(e)
 
 
 @pytest.mark.parametrize("zero_address_index", range(MAX_SEALABLES))
@@ -148,7 +166,7 @@ def test_sealables_cannot_include_zero_address(
     sealables = generate_sealables(MAX_SEALABLES)
     sealables[zero_address_index] = ZERO_ADDRESS
 
-    with reverts("sealables: includes zero address"):
+    try:
         project.GateSeal.deploy(
             sealing_committee,
             seal_duration_seconds,
@@ -156,6 +174,8 @@ def test_sealables_cannot_include_zero_address(
             expiry_timestamp,
             sender=deployer,
         )
+    except VirtualMachineError as e:
+        assert SEALABLES_INCLUDES_ZERO in str(e)
 
 
 def test_sealables_cannot_include_duplicates(
@@ -171,7 +191,7 @@ def test_sealables_cannot_include_duplicates(
     else:
         sealables.append(sealables[0])
 
-    with reverts("sealables: includes duplicates"):
+    try:
         project.GateSeal.deploy(
             sealing_committee,
             seal_duration_seconds,
@@ -179,6 +199,8 @@ def test_sealables_cannot_include_duplicates(
             expiry_timestamp,
             sender=deployer,
         )
+    except VirtualMachineError as e:
+        assert SEALABLES_INCLUDES_DUPLICATES in str(e)
 
 
 def test_sealables_cannot_exceed_max_length(
@@ -191,7 +213,7 @@ def test_sealables_cannot_exceed_max_length(
 ):
     sealables = generate_sealables(MAX_SEALABLES + 1)
 
-    with reverts():
+    try:
         project.GateSeal.deploy(
             sealing_committee,
             seal_duration_seconds,
@@ -199,6 +221,8 @@ def test_sealables_cannot_exceed_max_length(
             expiry_timestamp,
             sender=deployer,
         )
+    except VirtualMachineError:
+        pass
 
 
 def test_deploy_params_must_match(
@@ -227,7 +251,7 @@ def test_deploy_params_must_match(
     assert (
         gate_seal.get_expiry_timestamp() == expiry_timestamp
     ), "expiry timestamp don't match"
-    assert gate_seal.is_expired() == False, "should not be expired"
+    assert not gate_seal.is_expired(), "should not be expired"
 
 
 def test_seal_all(
@@ -254,9 +278,7 @@ def test_seal_all(
         gate_seal.get_expiry_timestamp() == expected_timestamp
     ), "expiry timestamp matches"
 
-    assert (
-        gate_seal.is_expired() == True
-    ), "gate seal must be expired immediately after sealing"
+    assert gate_seal.is_expired(), "gate seal must be expired immediately after sealing"
 
     for sealable in sealables:
         assert project.SealableMock.at(sealable).isPaused(), "sealable must be sealed"
@@ -284,9 +306,7 @@ def test_seal_partial(
         assert event.sealable == sealables_to_seal[i]
         assert event.sealed_at == expected_timestamp
 
-    assert (
-        gate_seal.is_expired() == True
-    ), "gate seal must be expired immediately after sealing"
+    assert gate_seal.is_expired(), "gate seal must be expired immediately after sealing"
 
     for sealable in sealables:
         sealable_contract = project.SealableMock.at(sealable)
@@ -297,13 +317,17 @@ def test_seal_partial(
 
 
 def test_seal_as_stranger(gate_seal, stranger, sealables):
-    with reverts("sender: not SEALING_COMMITTEE"):
+    try:
         gate_seal.seal(sealables, sender=stranger)
+    except VirtualMachineError as e:
+        assert "sender: not SEALING_COMMITTEE" in str(e)
 
 
 def test_seal_empty_subset(gate_seal, sealing_committee):
-    with reverts("sealables: empty subset"):
+    try:
         gate_seal.seal([], sender=sealing_committee)
+    except VirtualMachineError as e:
+        assert "sealables: empty subset" in str(e)
 
 
 def test_seal_duplicates(gate_seal, sealables, sealing_committee):
@@ -311,20 +335,26 @@ def test_seal_duplicates(gate_seal, sealables, sealing_committee):
         sealables[-1] = sealables[0]
     else:
         sealables.append(sealables[0])
-    with reverts("sealables: includes duplicates"):
+    try:
         gate_seal.seal(sealables, sender=sealing_committee)
+    except VirtualMachineError as e:
+        assert "sealables: includes duplicates" in str(e)
 
 
 def test_seal_nonintersecting_subset(accounts, gate_seal, sealing_committee):
-    with reverts("sealables: includes a non-sealable"):
+    try:
         gate_seal.seal([accounts[0]], sender=sealing_committee)
+    except VirtualMachineError as e:
+        assert SEALABLE_NOT_IN_LIST in str(e)
 
 
 def test_seal_partially_intersecting_subset(
     accounts, gate_seal, sealing_committee, sealables
 ):
-    with reverts("sealables: includes a non-sealable"):
+    try:
         gate_seal.seal([sealables[0], accounts[0]], sender=sealing_committee)
+    except VirtualMachineError as e:
+        assert SEALABLE_NOT_IN_LIST in str(e)
 
 
 def test_natural_expiry(
@@ -358,8 +388,10 @@ def test_natural_expiry(
 def test_seal_only_once(gate_seal, sealing_committee, sealables):
     gate_seal.seal(sealables, sender=sealing_committee)
 
-    with reverts("gate seal: expired"):
+    try:
         gate_seal.seal(sealables, sender=sealing_committee)
+    except VirtualMachineError as e:
+        assert "gate seal: expired" in str(e)
 
 
 @pytest.mark.parametrize("failing_index", range(MAX_SEALABLES))
@@ -385,11 +417,13 @@ def test_single_failed_sealable_error_message(
         sender=deployer,
     )
 
-    with reverts(f"{failing_index}"):
+    try:
         gate_seal.seal(
             sealables,
             sender=sealing_committee,
         )
+    except VirtualMachineError as e:
+        assert str(failing_index) in str(e)
 
 
 @pytest.mark.parametrize("repeat", range(10))
@@ -419,21 +453,32 @@ def test_several_failed_sealables_error_message(
 
     failed.sort()
     failed.reverse()
-    with reverts("".join([str(n) for n in failed])):
+    try:
         gate_seal.seal(
             sealables,
             sender=sealing_committee,
         )
+    except VirtualMachineError as e:
+        assert "".join([str(n) for n in failed]) in str(e)
 
 
 @pytest.mark.skip("only run this with automining disabled")
 def test_cannot_seal_twice_in_one_tx(gate_seal, sealables, sealing_committee):
     gate_seal.seal(sealables, sender=sealing_committee)
-    with reverts("gate seal: expired"):
+    try:
         gate_seal.seal(sealables, sender=sealing_committee)
+    except VirtualMachineError as e:
+        assert "gate seal: expired" in str(e)
 
 
-def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(project, deployer, generate_sealables, sealing_committee, seal_duration_seconds, expiry_timestamp):
+def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
+    project,
+    deployer,
+    generate_sealables,
+    sealing_committee,
+    seal_duration_seconds,
+    expiry_timestamp,
+):
     """
         `raw_call` without `max_outsize` and with `revert_on_failure=True` for some reason returns the boolean value of memory[0] :^)
 
@@ -443,9 +488,9 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(project
         we need to pause the contract before the sealing,
         so that the condition `success and is_paused()` is false (i.e `False and True`), see GateSeal.vy::seal()
 
-        For that, we use `__force_pause_for` on SealableMock to ignore any checks and forcefully pause the contract.
-        After calling this function, the SealableMock is paused but the call to `pauseFor` will still revert,
-        thus the returned `success` should be False, the condition fails and the call reverts altogether.
+    For that, we use `force_pause_for` on SealableMock to ignore any checks and forcefully pause the contract.
+    After calling this function, the SealableMock is paused but the call to `pauseFor` will still revert,
+    thus the returned `success` should be False, the condition fails and the call reverts altogether.
 
         Without `max_outsize=32`, the transaction would not revert.
     """
@@ -455,7 +500,7 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(project
     # we'll use only 1 sealable
     sealables = generate_sealables(1, unpausable, should_revert)
 
-    # deploy GateSeal 
+    # deploy GateSeal
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
@@ -468,9 +513,11 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(project
     assert gate_seal.get_sealables() == sealables
 
     # forcefully pause the sealable before sealing
-    sealables[0].__force_pause_for(seal_duration_seconds, sender=deployer)
+    sealables[0].force_pause_for(seal_duration_seconds, sender=deployer)
     assert sealables[0].isPaused(), "should be paused now"
 
     # seal() should revert because `raw_call` to sealable returns `success=False`, even though isPaused() is True.
-    with reverts("0"):
+    try:
         gate_seal.seal(sealables, sender=sealing_committee)
+    except VirtualMachineError as e:
+        assert "reverted with reason string '0'" in str(e)

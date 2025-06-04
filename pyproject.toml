@@ -3,15 +3,14 @@ name = "gate-seal"
 version = "0.1.0"
 description = ""
 authors = ["Azat Serikov <azatsdev@gmail.com>"]
+package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.10.4,<3.11"
-eth-ape = "^0.6.2"
-vyper = "0.3.7"
-eth-utils = "^2.1.0"
-ape-hardhat = "^0.6.4"
-
-[tool.poetry.dev-dependencies]
+python = "^3.10.13"
+vyper = "0.4.1"
+ape-hardhat = "0.8.5"
+ape-vyper = "0.8.9"
+ape-infura = "0.8.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

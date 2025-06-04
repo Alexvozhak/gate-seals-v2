@@ -8,7 +8,7 @@ from utils.blueprint import (
     construct_blueprint_deploy_bytecode,
     deploy_blueprint,
     verify_blueprint_deploy_preamble,
-    verify_eip522_blueprint,
+    verify_eip5202_blueprint,
 )
 from utils.config import get_deployer, is_live_network
 from utils.env import load_env_variable
@@ -32,7 +32,7 @@ def main():
         deployer, blueprint_deploy_bytecode, prompt=True
     )
 
-    verify_eip522_blueprint(networks.active_provider.get_code(blueprint_address))
+    verify_eip5202_blueprint(networks.active_provider.get_code(blueprint_address))
     logger.success(f"Blueprint deployed: {blueprint_address}")
 
     """

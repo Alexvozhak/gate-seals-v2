@@ -15,15 +15,15 @@ To put such crucial components of the Lido protocol as `WithdrawalQueue` and `Va
 Each GateSeal is operated by a committee, essentially a multisig account responsible for pulling the break in case things go awry. However, authorizing a committee to pause/resume the protocol withdrawals would be utterly reckless which is why GateSeals have a number of safeguards in place:
 - each GateSeal can only be activated only once and becomes unusable immediately after,
 - each GateSeal can only be activated within its expiry period of 1 year maximum and becomes unusable past its expiry timestamp even if it was never triggered,
-- the pause duration set at costruction time is limited to 14 days.
+- the pause duration set at construction time is limited to 14 days.
 
 Thus, the biggest damage a compromised GateSeal multisig can inflict is to pause withdrawals for 14 days, given the DAO does not resume withdrawals sooner via the governance voting.
 
-With all that said, it still is undesireable for a decentralized protocol to rely on a multisig in any capacity. Which is why GateSeals are only a temporary solution; their limited lifespan and one-time use design also act as a kind of "inconvenience bomb", in that once expired, the GateSeal must be replaced and setup anew.
+With all that said, it still is undesirable for a decentralized protocol to rely on a multisig in any capacity. Which is why GateSeals are only a temporary solution; their limited lifespan and one-time use design also act as a kind of "inconvenience bomb", in that once expired, the GateSeal must be replaced and setup anew.
 
 ## How does it work?
 
-The idea of GateSeals is heavily based around [PausableUntil](/contracts/test_helpers/SealableMock.vy) contracts which both `WithdrawalQueue` and `ValidatorExitBus` implement. These PausableUntil contracts are similar to [Pausable](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v4.4/contracts/security/Pausable.sol) contracts with one important difference: the paused state is not merely a boolean value, but a timestamp from which the contract is resumed (or unpaused). This allows the user to pause the contract for a certain period, and after this period the contract will resume itself without an explicit call. Thus, the PausableUntil pattern in conjunction with a GateSeal provide a way to pull the break on the protocol in a critical situation.
+The idea of GateSeals is heavily based around [PausableUntil](/contracts/test_helpers/SealableMock.vy) contracts which both `WithdrawalQueue` and `ValidatorExitBus` implement. These PausableUntil contracts are similar to [Pausable](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v4.4/contracts/security/Pausable.sol) contracts with one important difference: the paused state is not merely a boolean value, but a timestamp from which the contract is resumed (or unpaused). This allows the user to pause the contract for a certain period, and after this period the contract will resume itself without an explicit call. Thus, the PausableUntil pattern in conjunction with a GateSeal provide a way to pull the brake on the protocol in a critical situation.
 
 A GateSeal is set up with an immutable configuration at the time of construction:
 - the sealing committee, an account responsible for triggering the seal,
@@ -87,10 +87,10 @@ flowchart LR
 
 ### Prerequisites
 This project was developed using these dependencies with their exact versions listed below:
-- Python 3.10
-- Poetry 1.1.13
-- Node.js 16.14.2
-- Yarn 1.22.19
+- Python 3.10.13
+- Poetry 2.1.3
+- Node.js v22.16.0
+- Yarn 1.22.22
 
 Other versions may work as well but were not tested at all.
 
@@ -111,12 +111,7 @@ poetry install
 yarn
 ```
 
-4. Install ape plugins
-```shell
-ape plugins install .
-```
-
-5. (optional) set `MAINNET_RPC_ENDPOINT` environment variable for mainnet forking and deploying
+4. (optional) set `MAINNET_RPC_ENDPOINT` environment variable for mainnet forking and deploying
 ```shell
 export MAINNET_RPC_ENDPOINT=<your-mainnet-rpc-endpoint>
 ```

@@ -1,4 +1,4 @@
-# @version 0.3.7
+# @version 0.4.1
 
 """
 @title GateSealFactory
@@ -11,10 +11,10 @@
      using `create_from_blueprint`.
 
      The blueprint must follow EIP-5202 and, thus, is not a
-     functioning GateSeal itself but only its initcode.
+     functioning GateSeal itself but only its deployment code.
 
      More on blueprints
-     https://docs.vyperlang.org/en/v0.3.7/built-in-functions.html#chain-interaction
+     https://docs.vyperlang.org/en/v0.4.1/built-in-functions.html#chain-interaction
 
      More on EIP-5202
      https://eips.ethereum.org/EIPS/eip-5202
@@ -24,7 +24,7 @@ event GateSealCreated:
     gate_seal: address
 
 
-# First 3 bytes of the blueprint is the EIP-5202 header;
+# First 3 bytes of the blueprint are the EIP-5202 header;
 # The actual code of the contract starts at 4th byte
 EIP5202_CODE_OFFSET: constant(uint256) = 3
 
@@ -37,9 +37,16 @@ MAX_SEALABLES: constant(uint256) = 8
 # Address of the blueprint that must be deployed beforehand
 BLUEPRINT: immutable(address)
 
-@external
+# @dev Error messages
+BLUEPRINT_ZERO_ADDRESS: constant(String[32]) = "blueprint: zero address"
+
+@deploy
 def __init__(_blueprint: address):
-    assert _blueprint != empty(address), "blueprint: zero address"
+    """
+    @notice Initialize the factory with a blueprint contract
+    @param _blueprint The address of the blueprint contract
+    """
+    assert _blueprint != empty(address), BLUEPRINT_ZERO_ADDRESS
     BLUEPRINT = _blueprint
 
 
@@ -73,4 +80,4 @@ def create_gate_seal(
         code_offset=EIP5202_CODE_OFFSET,
     )
 
-    log GateSealCreated(gate_seal)
+    log GateSealCreated(gate_seal=gate_seal)
