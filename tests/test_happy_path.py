@@ -1,5 +1,3 @@
-from ape.logging import logger
-from datetime import datetime
 from utils.blueprint import deploy_blueprint, construct_blueprint_deploy_bytecode
 
 
@@ -34,14 +32,19 @@ def test_happy_path(networks, chain, project, accounts):
 
     now = chain.pending_timestamp
 
-    EXPIRY_DURATION = 60 * 60 * 24 * 365  # 1 year
+    EXPIRY_DURATION = 60 * 60 * 24 * 365 * 3  # 3 years
 
     # Step 6. Create a GateSeal using the factory
+    PROLONGATIONS = 2
+    PROLONGATION_DURATION = 60 * 60 * 24 * 30 * 6  # 6 months
+
     transaction = gate_seal_factory.create_gate_seal(
         SEALING_COMMITTEE,
         SEAL_DURATION_SECONDS,
         SEALABLES,
         now + EXPIRY_DURATION,
+        PROLONGATIONS,
+        PROLONGATION_DURATION,
         sender=DEPLOYER,
     )
 

@@ -61,7 +61,9 @@ def create_gate_seal(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _expiry_timestamp: uint256
+    _expiry_timestamp: uint256,
+    _prolongations: uint256,
+    _prolongation_duration_seconds: uint256
 ):
     """
     @notice Create a new GateSeal.
@@ -70,6 +72,8 @@ def create_gate_seal(
     @param _seal_duration_seconds duration of the seal in seconds
     @param _sealables addresses of pausable contracts
     @param _expiry_timestamp unix timestamp when the GateSeal will naturally expire
+    @param _prolongations number of prolongations
+    @param _prolongation_duration_seconds duration of the prolongation in seconds
     """
     gate_seal: address = create_from_blueprint(
         BLUEPRINT,
@@ -77,6 +81,8 @@ def create_gate_seal(
         _seal_duration_seconds,
         _sealables,
         _expiry_timestamp,
+        _prolongations,
+        _prolongation_duration_seconds,
         code_offset=EIP5202_CODE_OFFSET,
     )
 
