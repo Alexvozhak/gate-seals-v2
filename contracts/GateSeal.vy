@@ -111,9 +111,14 @@ def __init__(
     assert len(_sealables) > 0, "sealables: empty list"
     assert _expiry_timestamp > block.timestamp, "expiry timestamp: must be in the future"
     assert _expiry_timestamp <= block.timestamp + MAX_EXPIRY_PERIOD_SECONDS, "expiry timestamp: exceeds max expiry period"
-    assert _prolongation_duration_seconds > 0, "prolongation duration: zero"
-    assert _prolongation_duration_seconds <= MAX_PROLONGATION_DURATION_SECONDS, "prolongation duration: exceeds max"
     assert _prolongations <= MAX_PROLONGATIONS, "prolongations: exceeds max"
+    assert _prolongations >= 0, "prolongations: must be non-negative"
+    if (_prolongations == 0):
+        assert _prolongation_duration_seconds == 0, "prolongation duration: must be zero"
+    else:
+        assert _prolongation_duration_seconds > 0, "prolongation duration: must be positive"
+        assert _prolongation_duration_seconds <= MAX_PROLONGATION_DURATION_SECONDS, "prolongation duration: exceeds max"
+
     for sealable: address in _sealables:
         assert sealable != empty(address), "sealables: includes zero address"
     assert not self._has_duplicates(_sealables), "sealables: includes duplicates"

@@ -61,7 +61,7 @@ def gate_seal(
         sealing_committee,
         seal_duration_seconds,
         sealables,
-        expiry_timestamp,
+        expiry_timestamp(),
         prolongations,
         prolongation_duration_seconds,
         sender=deployer,
@@ -90,8 +90,8 @@ def seal_duration_seconds(day):
 
 
 @pytest.fixture(scope="function")
-def expiry_timestamp(now):
-    return now + MAX_EXPIRY_PERIOD_SECONDS
+def expiry_timestamp(chain):
+    return lambda: chain.pending_timestamp + MAX_EXPIRY_PERIOD_SECONDS
 
 
 @pytest.fixture(scope="session")
@@ -106,7 +106,7 @@ def prolongation_duration_seconds(day):
 
 @pytest.fixture(scope="function")
 def now(chain):
-    return chain.pending_timestamp
+    return lambda: chain.pending_timestamp
 
 
 @pytest.fixture(scope="session")
