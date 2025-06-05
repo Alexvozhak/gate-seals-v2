@@ -218,10 +218,9 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
         # capturing `response` to keep the compiler from acting out but will not be checking it
         # as different sealables may return different values if anything at all
         # for details, see https://docs.vyperlang.org/en/stable/built-in-functions.html#raw_call
-        success, response = raw_call(
+        success = raw_call(
             sealable,
             abi_encode(SEAL_DURATION_SECONDS, method_id=method_id("pauseFor(uint256)")),
-            max_outsize=32,
             revert_on_failure=False
         )
         
