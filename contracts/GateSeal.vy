@@ -249,7 +249,6 @@ def _is_expired() -> bool:
 @internal
 def _expire_immediately():
     self.expiry_timestamp = block.timestamp
-    self.prolongations_remaining = 0
 
 
 @internal
