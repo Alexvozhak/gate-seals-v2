@@ -2,7 +2,7 @@ resumed_timestamp: uint256
 unpausable: bool
 reverts: bool
 
-@external
+@deploy
 def __init__(_unpausable: bool, _reverts: bool):
     # _unpausable used for imitating cases where the contract failed
     # to pause without reverting

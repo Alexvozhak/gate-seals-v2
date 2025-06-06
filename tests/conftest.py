@@ -17,18 +17,13 @@ def deployer(accounts):
 
 
 @pytest.fixture(scope="session")
-def dao_agent(accounts):
+def sealing_committee(accounts):
     return accounts[1]
 
 
 @pytest.fixture(scope="session")
-def sealing_committee(accounts):
-    return accounts[2]
-
-
-@pytest.fixture(scope="session")
 def stranger(accounts):
-    return accounts[3]
+    return accounts[2]
 
 
 """
@@ -59,12 +54,16 @@ def gate_seal(
     seal_duration_seconds,
     sealables,
     expiry_timestamp,
+    prolongations,
+    prolongation_duration_seconds,
 ):
     transaction = gate_seal_factory.create_gate_seal(
         sealing_committee,
         seal_duration_seconds,
         sealables,
-        expiry_timestamp,
+        expiry_timestamp(),
+        prolongations,
+        prolongation_duration_seconds,
         sender=deployer,
     )
 
@@ -91,13 +90,23 @@ def seal_duration_seconds(day):
 
 
 @pytest.fixture(scope="function")
-def expiry_timestamp(now):
-    return now + MAX_EXPIRY_PERIOD_SECONDS
+def expiry_timestamp(chain):
+    return lambda: chain.pending_timestamp + MAX_EXPIRY_PERIOD_SECONDS
+
+
+@pytest.fixture(scope="session")
+def prolongations():
+    return 2
+
+
+@pytest.fixture(scope="session")
+def prolongation_duration_seconds(day):
+    return day * 30 * 6
 
 
 @pytest.fixture(scope="function")
 def now(chain):
-    return chain.pending_timestamp
+    return lambda: chain.pending_timestamp
 
 
 @pytest.fixture(scope="session")
@@ -118,3 +127,39 @@ def generate_sealables(project, deployer):
         project.SealableMock.deploy(unpausable, reverts, sender=deployer)
         for _ in range(n)
     ]
+
+
+@pytest.fixture(scope="session")
+def generate_advanced_sealables(project, deployer):
+    """Generate advanced sealable mocks with configurable behavior"""
+    def _generate(
+        n, 
+        gas_bomb_enabled=False, 
+        revert_on_pause=False, 
+        revert_on_is_paused=False,
+        gas_consumption_loops=0,
+        custom_is_paused_return=False
+    ):
+        return [
+            project.AdvancedSealableMock.deploy(
+                gas_bomb_enabled, 
+                revert_on_pause, 
+                revert_on_is_paused,
+                gas_consumption_loops,
+                custom_is_paused_return,
+                sender=deployer
+            )
+            for _ in range(n)
+        ]
+    return _generate
+
+
+@pytest.fixture(scope="function")
+def extreme_timestamps():
+    """Extreme timestamp values for edge case testing"""
+    return {
+        'near_overflow': 2**256 - 1000,
+        'year_2038': 2147483647,  # Unix timestamp overflow
+        'far_future': 2**200,     # Very large but safe value
+        'max_safe': 2**256 - MAX_EXPIRY_PERIOD_SECONDS - 1,
+    }

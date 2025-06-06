@@ -1,4 +1,4 @@
-# @version 0.3.7
+# @version 0.4.1
 
 """
 @title GateSeal
@@ -13,7 +13,7 @@
      GateSeal assumes that they have the permission to pause the contracts.
 
      GateSeals are only a temporary solution and will be deprecated in the future,
-     as it is undesireable for the protocol to rely on a multisig. This is why
+     as it is undesirable for the protocol to rely on a multisig. This is why
      each GateSeal has an expiry date. Once expired, GateSeal is no longer
      usable and a new GateSeal must be set up with a new multisig committee. This
      works as a kind of difficulty bomb, a device that encourages the protocol
@@ -31,22 +31,32 @@ event Sealed:
     sealable: address
     sealed_at: uint256
 
+event ProlongationUsed:
+    gate_seal: address
+    new_expiry: uint256
+    prolongations_remaining: uint256
+
 interface IPausableUntil:
     def pauseFor(_duration: uint256): nonpayable
     def isPaused() -> bool: view
 
 SECONDS_PER_DAY: constant(uint256) = 60 * 60 * 24
 
-# The minimum allowed seal duration is 4 days. This is because it takes at least
-# 3 days to pass and enact. Additionally, we want to include a 1-day padding.
-MIN_SEAL_DURATION_DAYS: constant(uint256) = 4
+# The maximum GateSeal expiry duration is 3 years.
+MAX_EXPIRY_PERIOD_DAYS: constant(uint256) = 365 * 3
+MAX_EXPIRY_PERIOD_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_EXPIRY_PERIOD_DAYS
+
+# The minimum allowed seal duration is 6 days. This is because it takes at least
+# 5 days to pass and enact (3 days main phase, 2 days objection phase).
+# Additionally, we want to include a 1-day padding.
+MIN_SEAL_DURATION_DAYS: constant(uint256) = 6
 MIN_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MIN_SEAL_DURATION_DAYS
 
-# The maximum allowed seal duration is 14 days.
+# The maximum allowed seal duration is 21 days.
 # Anything higher than that may be too long of a disruption for the protocol.
 # Keep in mind, that the DAO still retains the ability to resume the contracts
 # (or, in the GateSeal terms, "break the seal") prematurely.
-MAX_SEAL_DURATION_DAYS: constant(uint256) = 14
+MAX_SEAL_DURATION_DAYS: constant(uint256) = 21
 MAX_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_SEAL_DURATION_DAYS
 
 # The maximum number of sealables is 8.
@@ -55,19 +65,27 @@ MAX_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_SEAL_DURATI
 # is why we've opted to use a dynamic-size array.
 MAX_SEALABLES: constant(uint256) = 8
 
-# The maximum GateSeal expiry duration is 1 year.
-MAX_EXPIRY_PERIOD_DAYS: constant(uint256) = 365
-MAX_EXPIRY_PERIOD_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_EXPIRY_PERIOD_DAYS
+# Maximum number of prolongations allowed
+MAX_PROLONGATIONS: constant(uint256) = 5
+
+# Maximum duration of a single prolongation is 6 months
+MAX_PROLONGATION_DURATION_DAYS: constant(uint256) = 180
+MAX_PROLONGATION_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_PROLONGATION_DURATION_DAYS
 
 # To simplify the code, we chose not to implement committees in GateSeals.
 # Instead, GateSeals are operated by a single account which must be a multisig.
-# The code does not perform any such checks but we pinky-promise that
+# The code does not perform any such checks but we ensure that
 # the sealing committee will always be a multisig. 
 SEALING_COMMITTEE: immutable(address)
 
-# The duration of the seal in seconds. This period cannot exceed 14 days. 
+# The duration of the seal in seconds. This period cannot exceed 21 days.
 # The DAO may decide to resume the contracts prematurely via the DAO voting process.
 SEAL_DURATION_SECONDS: immutable(uint256)
+
+# The sealing committee extends the GateSeal to attest that the multisig is still active.
+
+# The duration of the prolongation in seconds.
+PROLONGATION_DURATION_SECONDS: immutable(uint256)
 
 # The addresses of pausable contracts. The gate seal must have the permission to
 # pause these contracts at the time of the sealing.
@@ -80,13 +98,17 @@ sealables: DynArray[address, MAX_SEALABLES]
 # upon sealing to expire GateSeal immediately which will revert any consecutive sealings.
 expiry_timestamp: uint256
 
+# The number of prolongations remaining.
+prolongations_remaining: uint256
 
-@external
+@deploy
 def __init__(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _expiry_timestamp: uint256
+    _expiry_timestamp: uint256,
+    _prolongations: uint256,
+    _prolongation_duration_seconds: uint256
 ):
     assert _sealing_committee != empty(address), "sealing committee: zero address"
     assert _seal_duration_seconds >= MIN_SEAL_DURATION_SECONDS, "seal duration: too short"
@@ -94,14 +116,24 @@ def __init__(
     assert len(_sealables) > 0, "sealables: empty list"
     assert _expiry_timestamp > block.timestamp, "expiry timestamp: must be in the future"
     assert _expiry_timestamp <= block.timestamp + MAX_EXPIRY_PERIOD_SECONDS, "expiry timestamp: exceeds max expiry period"
-    for sealable in _sealables:
+    assert _prolongations <= MAX_PROLONGATIONS, "prolongations: exceeds max"
+    assert _prolongations >= 0, "prolongations: must be non-negative"
+    if (_prolongations == 0):
+        assert _prolongation_duration_seconds == 0, "prolongation duration: must be zero"
+    else:
+        assert _prolongation_duration_seconds > 0, "prolongation duration: must be positive"
+        assert _prolongation_duration_seconds <= MAX_PROLONGATION_DURATION_SECONDS, "prolongation duration: exceeds max"
+
+    for sealable: address in _sealables:
         assert sealable != empty(address), "sealables: includes zero address"
     assert not self._has_duplicates(_sealables), "sealables: includes duplicates"
 
     SEALING_COMMITTEE = _sealing_committee
     SEAL_DURATION_SECONDS = _seal_duration_seconds
+    PROLONGATION_DURATION_SECONDS = _prolongation_duration_seconds
     self.sealables = _sealables
     self.expiry_timestamp = _expiry_timestamp
+    self.prolongations_remaining = _prolongations
 
 
 @external
@@ -130,8 +162,67 @@ def get_expiry_timestamp() -> uint256:
 
 @external
 @view
+def get_prolongation_duration_seconds() -> uint256:
+    return PROLONGATION_DURATION_SECONDS
+
+
+@external
+@view
+def get_prolongations_remaining() -> uint256:
+    return self.prolongations_remaining
+
+
+@external
+@view
 def is_expired() -> bool:
     return self._is_expired()
+
+
+@external
+@view
+def get_time_until_expiry() -> uint256:
+    """
+    @notice Get time remaining until expiry
+    @return Time in seconds until expiry, 0 if already expired
+    """
+    if self._is_expired():
+        return 0
+    return self.expiry_timestamp - block.timestamp
+
+
+@external
+@view
+def can_prolong() -> bool:
+    """
+    @notice Check if GateSeal can be prolonged
+    @return True if can be prolonged, False otherwise
+    """
+    return (not self._is_expired() and 
+            self.prolongations_remaining > 0)
+
+
+@external
+def prolong():
+    """
+    @notice Prolong the GateSeal.
+    @dev    Can be called only by the sealing committee while the seal hasn't been used and not expired.
+    """
+    assert msg.sender == SEALING_COMMITTEE, "sender: not SEALING_COMMITTEE"
+    assert not self._is_expired(), "gate seal: expired"
+    assert self.prolongations_remaining > 0, "prolongations: exhausted"
+
+    # Protection against timestamp overflow
+    new_expiry: uint256 = self.expiry_timestamp + PROLONGATION_DURATION_SECONDS
+    assert new_expiry > self.expiry_timestamp, "expiry: overflow"
+
+    self.expiry_timestamp = new_expiry
+    self.prolongations_remaining -= 1
+
+    log ProlongationUsed(
+        gate_seal=self,
+        new_expiry=new_expiry,
+        prolongations_remaining=self.prolongations_remaining
+    )
 
 
 @external
@@ -155,8 +246,23 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
     failed_indexes: DynArray[uint256, MAX_SEALABLES] = []
     sealable_index: uint256 = 0
 
-    for sealable in _sealables:
+    for sealable: address in _sealables:
         assert sealable in self.sealables, "sealables: includes a non-sealable"
+
+        # Check pause state before attempting to pause
+        was_paused: bool = False
+        was_paused_success: bool = False
+        was_paused_response: Bytes[32] = b""
+        
+        was_paused_success, was_paused_response = raw_call(
+            sealable,
+            abi_encode(method_id("isPaused()")),
+            max_outsize=32,
+            revert_on_failure=False
+        )
+        
+        if was_paused_success and len(was_paused_response) >= 32:
+            was_paused = convert(was_paused_response, bool)
 
         success: bool = False
         response: Bytes[32] = b""
@@ -167,13 +273,35 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
         # for details, see https://docs.vyperlang.org/en/stable/built-in-functions.html#raw_call
         success, response = raw_call(
             sealable,
-            _abi_encode(SEAL_DURATION_SECONDS, method_id=method_id("pauseFor(uint256)")),
+            abi_encode(SEAL_DURATION_SECONDS, method_id=method_id("pauseFor(uint256)")),
             max_outsize=32,
             revert_on_failure=False
         )
         
-        if success and IPausableUntil(sealable).isPaused():
-            log Sealed(self, SEALING_COMMITTEE, SEAL_DURATION_SECONDS, sealable, block.timestamp)
+        # Check pause state after attempting to pause
+        is_paused_after: bool = False
+        is_paused_success: bool = False
+        is_paused_response: Bytes[32] = b""
+        
+        is_paused_success, is_paused_response = raw_call(
+            sealable,
+            abi_encode(method_id("isPaused()")),
+            max_outsize=32,
+            revert_on_failure=False
+        )
+        
+        if is_paused_success and len(is_paused_response) >= 32:
+            is_paused_after = convert(is_paused_response, bool)
+        
+        # Consider successful if pauseFor() succeeded AND (contract became paused OR was already paused)
+        if success and (is_paused_after or was_paused):
+            log Sealed(
+                gate_seal=self,
+                sealed_by=SEALING_COMMITTEE,
+                sealed_for=SEAL_DURATION_SECONDS,
+                sealable=sealable,
+                sealed_at=block.timestamp
+            )
         else:
             failed_indexes.append(sealable_index)
     
@@ -191,6 +319,7 @@ def _is_expired() -> bool:
 @internal
 def _expire_immediately():
     self.expiry_timestamp = block.timestamp
+    self.prolongations_remaining = 0
 
 
 @internal
@@ -202,7 +331,7 @@ def _has_duplicates(_sealables: DynArray[address, MAX_SEALABLES]) -> bool:
     """
     unique: DynArray[address, MAX_SEALABLES] = []
 
-    for sealable in _sealables:
+    for sealable: address in _sealables:
         if sealable in unique:
             return True
         unique.append(sealable)
@@ -212,25 +341,13 @@ def _has_duplicates(_sealables: DynArray[address, MAX_SEALABLES]) -> bool:
 
 @internal
 @pure
-def _to_error_string(_failed_indexes: DynArray[uint256, MAX_SEALABLES]) -> String[78]:
+def _to_error_string(_failed_indexes: DynArray[uint256, MAX_SEALABLES]) -> String[100]:
     """
-    @notice converts a list of indexes into an error message to faciliate debugging
-    @dev    The indexes in the error message are given in the descending order to avoid
-            losing leading zeros when casting to string,
-
-            e.g. [0, 2, 3, 6] -> "6320"
+    @notice converts a list of indexes into an error message to facilitate debugging
     @param _failed_indexes a list of sealable indexes that failed to seal 
     """
-    indexes_as_decimal: uint256 = 0
-    loop_index: uint256 = 0
-
-    # convert failed indexes to a decimal representation
-    for failed_index in _failed_indexes:
-        indexes_as_decimal += failed_index * 10 ** loop_index
-        loop_index += 1
-
-    # generate error message with indexes as a decimal string
-    # return type of `uint2str` is String[78] because 2^256 has 78 digits
-    error_message: String[78] = uint2str(indexes_as_decimal)
-
-    return error_message
+    if len(_failed_indexes) == 0:
+        return "no failures"
+    
+    # Simple message without detailed indexes to avoid string concat overflow
+    return "sealable operations failed"
