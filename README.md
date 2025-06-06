@@ -45,7 +45,7 @@ pausable contracts, which is why GateSeal must be given the appropriate permissi
 GateSeal is created using the GateSealFactory. The factory uses the blueprint pattern whereby new GateSeal is deployed using the initcode (blueprint) stored onchain. The blueprint is essentially a broken GateSeal that can only be used to create new GateSeal.
 
 The factory's `create_gate_seal` function takes the number of allowed prolongations and the prolongation duration alongside the original parameters.
-While Vyper offers other ways to create new contracts, we opted to use the blueprint pattern because it creates a fully autonomous contract without any dependencies. Unlike other contract-creating functions, [`create_from_blueprint`](https://docs.vyperlang.org/en/stable/built-in-functions.html#chain-interaction) invokes the constructor of the contract, thus, helping avoid the initilization shenanigans.
+While Vyper offers other ways to create new contracts, we opted to use the blueprint pattern because it creates a fully autonomous contract without any dependencies. Unlike other contract-creating functions, [`create_from_blueprint`](https://docs.vyperlang.org/en/stable/built-in-functions.html#chain-interaction) invokes the constructor of the contract, thus, helping avoid the initialization shenanigans.
 
 The blueprint follows the [EIP-5202](https://eips.ethereum.org/EIPS/eip-5202) format, which includes a header that prevents the contract from being called and specifies the version. 
 
