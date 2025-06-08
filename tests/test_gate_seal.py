@@ -244,7 +244,7 @@ def test_seal_fails_if_already_used(
         gate_seal.seal(sealables, sender=sealing_committee)
 
 
-def test_extend_lifetime_success(
+def test_prolong_lifetime_success(
     project,
     deployer,
     sealing_committee,
@@ -272,11 +272,11 @@ def test_extend_lifetime_success(
     chain = project.provider.network.ecosystem.get_chain("ethereum")
     chain.mine(deltatime=initial_lifetime - activation_window + 1)
     
-    # Should be able to extend
-    assert gate_seal.can_extend_lifetime() == True
+    # Should be able to prolong
+    assert gate_seal.can_prolong_lifetime() == True
     
-    # Extend lifetime
-    gate_seal.extendLifetime(sender=sealing_committee)
+    # Prolong lifetime
+    gate_seal.prolongLifetime(sender=sealing_committee)
     
     # Check that expiry was extended
     new_expiry = gate_seal.expiry_timestamp()
@@ -286,16 +286,16 @@ def test_extend_lifetime_success(
     assert gate_seal.prolongations_used() == 1
 
 
-def test_extend_lifetime_fails_outside_activation_window(
+def test_prolong_lifetime_fails_outside_activation_window(
     gate_seal,
     sealing_committee,
 ):
     # Too early - should fail
     with pytest.raises(ContractLogicError, match="outside activation window"):
-        gate_seal.extendLifetime(sender=sealing_committee)
+        gate_seal.prolongLifetime(sender=sealing_committee)
 
 
-def test_extend_lifetime_fails_if_no_prolongations_remaining(
+def test_prolong_lifetime_fails_if_no_prolongations_remaining(
     project,
     deployer,
     sealing_committee,
@@ -320,15 +320,15 @@ def test_extend_lifetime_fails_if_no_prolongations_remaining(
     chain = project.provider.network.ecosystem.get_chain("ethereum")
     chain.mine(deltatime=initial_lifetime - activation_window + 1)
     
-    # Should not be able to extend
-    assert gate_seal.can_extend_lifetime() == False
+    # Should not be able to prolong
+    assert gate_seal.can_prolong_lifetime() == False
     
-    # Extend should fail
+    # Prolong should fail
     with pytest.raises(ContractLogicError, match="no prolongations remaining"):
-        gate_seal.extendLifetime(sender=sealing_committee)
+        gate_seal.prolongLifetime(sender=sealing_committee)
 
 
-def test_extend_lifetime_fails_if_not_committee(
+def test_prolong_lifetime_fails_if_not_committee(
     project,
     deployer,
     sealing_committee,
@@ -355,9 +355,9 @@ def test_extend_lifetime_fails_if_not_committee(
     chain = project.provider.network.ecosystem.get_chain("ethereum")
     chain.mine(deltatime=initial_lifetime - activation_window + 1)
     
-    # Stranger cannot extend
+    # Stranger cannot prolong
     with pytest.raises(ContractLogicError, match="unauthorized caller"):
-        gate_seal.extendLifetime(sender=stranger)
+        gate_seal.prolongLifetime(sender=stranger)
 
 
 def test_is_expired_functionality(

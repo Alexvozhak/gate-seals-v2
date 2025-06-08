@@ -43,8 +43,8 @@ event Sealed:
     sealables: DynArray[address, MAX_SEALABLES]
     sealed_for: uint256
 
-event LifetimeExtended:
-    extended_by: indexed(address)
+event LifetimeProlonged:
+    prolonged_by: indexed(address)
     old_expiry: uint256
     new_expiry: uint256
     prolongations_remaining: uint256
@@ -52,7 +52,7 @@ event LifetimeExtended:
 event Expired:
     pass
 
-# sealing committee that has the power to seal and extend lifetime
+# sealing committee that has the power to seal and prolong lifetime
 sealing_committee: public(address)
 
 # the sealables that can be sealed
@@ -82,7 +82,7 @@ def __init__(
 ):
     """
     @notice creates a new GateSeal with specified parameters
-    @param _sealing_committee the address that can seal the contracts and extend lifetime
+    @param _sealing_committee the address that can seal the contracts and prolong lifetime
     @param _seal_duration_seconds the duration for which the sealables will be paused (6-21 days)
     @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
     @param _initial_lifetime_seconds the initial lifetime of the GateSeal (1 month - 1 year)
@@ -202,9 +202,9 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
     log Sealed(sealed_by=msg.sender, sealables=_sealables, sealed_for=self.seal_duration_seconds)
 
 @external
-def extendLifetime():
+def prolongLifetime():
     """
-    @notice extends the GateSeal lifetime by the initial lifetime duration
+    @notice prolongs the GateSeal lifetime by the initial lifetime duration
     @dev can only be called by sealing committee, within the activation window,
          and only if prolongations are remaining
     """
@@ -227,8 +227,8 @@ def extendLifetime():
     self.expiry_timestamp = old_expiry + self.initial_lifetime_seconds
     self.prolongations_used += 1
     
-    log LifetimeExtended(
-        extended_by=msg.sender, 
+    log LifetimeProlonged(
+        prolonged_by=msg.sender, 
         old_expiry=old_expiry, 
         new_expiry=self.expiry_timestamp, 
         prolongations_remaining=self.max_prolongations - self.prolongations_used
@@ -264,9 +264,9 @@ def get_seal_info() -> (
 
 @external 
 @view
-def can_extend_lifetime() -> bool:
+def can_prolong_lifetime() -> bool:
     """
-    @notice checks if the GateSeal lifetime can be extended right now
+    @notice checks if the GateSeal lifetime can be prolonged right now
     @return true if prolongation is possible, false otherwise
     """
     if self.prolongations_used >= self.max_prolongations:

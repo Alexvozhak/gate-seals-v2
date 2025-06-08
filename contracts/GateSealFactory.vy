@@ -69,7 +69,7 @@ def create_gate_seal(
 ) -> address:
     """
     @notice creates a new GateSeal with the specified parameters
-    @param _sealing_committee the address that can seal the contracts and extend lifetime
+    @param _sealing_committee the address that can seal the contracts and prolong lifetime
     @param _seal_duration_seconds the duration for which the sealables will be paused (6-21 days)
     @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
     @param _initial_lifetime_seconds the initial lifetime of the GateSeal (1 month - 1 year)
