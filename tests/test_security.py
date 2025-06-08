@@ -39,7 +39,7 @@ def test_seal_reentrancy_via_malicious_pausable(
     malicious_pausable.setReentrancyTarget(gate_seal.address, sender=deployer)
     
     # Sealing should still work despite reentrancy attempt
-    # The malicious contract will try to call prolong() during pauseFor()
+    # The malicious contract will try to call prolongLifetime() during pauseFor()
     tx = gate_seal.seal(sealables, sender=sealing_committee)
     
     # Should have one Sealed event

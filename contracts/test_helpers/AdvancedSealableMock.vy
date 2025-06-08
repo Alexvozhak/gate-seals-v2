@@ -13,7 +13,7 @@
 
 interface IGateSeal:
     def seal(_sealables: DynArray[address, 8]): nonpayable
-    def prolong(): nonpayable
+    def prolongLifetime(): nonpayable
 
 # Behavior configuration flags
 paused_until: uint256
@@ -72,12 +72,12 @@ def pauseFor(_duration: uint256):
             
     # Reentrancy attempt simulation
     if self.reentrancy_target != empty(address):
-        # Try to call back to the GateSeal
+        # Try to call gate seal functions during pauseFor
         success: bool = False
         response: Bytes[32] = b""
         success, response = raw_call(
             self.reentrancy_target,
-            abi_encode(method_id("prolong()")),
+            abi_encode(method_id("prolongLifetime()")),
             max_outsize=32,
             revert_on_failure=False
         )

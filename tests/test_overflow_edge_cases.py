@@ -15,7 +15,7 @@ def test_prolong_timestamp_overflow_edge(
     sealables,
     prolongations,
 ):
-    """Test overflow protection in prolong() function"""
+    """Test overflow protection in prolongLifetime() function"""
     # Create GateSeal with expiry very close to uint256 max
     uint256_max = 2**256 - 1
     near_overflow_expiry = uint256_max - MAX_PROLONGATION_DURATION_SECONDS + 1
@@ -32,7 +32,7 @@ def test_prolong_timestamp_overflow_edge(
     
     # Attempting to prolong should fail due to overflow protection
     with pytest.raises(VirtualMachineError, match="expiry: overflow"):
-        gate_seal.prolong(sender=sealing_committee)
+        gate_seal.prolongLifetime(sender=sealing_committee)
 
 
 def test_expiry_at_exact_block_timestamp(
@@ -65,7 +65,7 @@ def test_expiry_at_exact_block_timestamp(
     # Should be expired now
     assert gate_seal.is_expired(), "GateSeal should be expired"
     assert gate_seal.get_time_until_expiry() == 0, "Time until expiry should be 0"
-    assert not gate_seal.can_prolong(), "Should not be able to prolong expired GateSeal"
+    assert not gate_seal.can_prolong_lifetime(), "Should not be able to prolong expired GateSeal"
     
     # Should not be able to seal
     with pytest.raises(VirtualMachineError, match="gate seal: expired"):
@@ -73,7 +73,7 @@ def test_expiry_at_exact_block_timestamp(
         
     # Should not be able to prolong
     with pytest.raises(VirtualMachineError, match="gate seal: expired"):
-        gate_seal.prolong(sender=sealing_committee)
+        gate_seal.prolongLifetime(sender=sealing_committee)
 
 
 def test_seal_exactly_at_expiry_edge(
@@ -141,10 +141,10 @@ def test_prolong_chain_maximum(
     for i in range(MAX_PROLONGATIONS):
         expected_prolongations_remaining = MAX_PROLONGATIONS - i
         assert gate_seal.get_prolongations_remaining() == expected_prolongations_remaining
-        assert gate_seal.can_prolong(), f"Should be able to prolong at iteration {i}"
+        assert gate_seal.can_prolong_lifetime(), f"Should be able to prolong at iteration {i}"
         
         current_expiry = gate_seal.get_expiry_timestamp()
-        tx = gate_seal.prolong(sender=sealing_committee)
+        tx = gate_seal.prolongLifetime(sender=sealing_committee)
         
         # Check event
         assert len(tx.events) == 1
@@ -159,11 +159,11 @@ def test_prolong_chain_maximum(
     
     # No more prolongations should be available
     assert gate_seal.get_prolongations_remaining() == 0
-    assert not gate_seal.can_prolong(), "Should not be able to prolong anymore"
+    assert not gate_seal.can_prolong_lifetime(), "Should not be able to prolong anymore"
     
     # Attempting another prolongation should fail
     with pytest.raises(VirtualMachineError, match="prolongations: exhausted"):
-        gate_seal.prolong(sender=sealing_committee)
+        gate_seal.prolongLifetime(sender=sealing_committee)
 
 
 def test_prolongation_near_uint256_max(
@@ -190,7 +190,7 @@ def test_prolongation_near_uint256_max(
     
     # This should work fine
     original_expiry = gate_seal.get_expiry_timestamp()
-    gate_seal.prolong(sender=sealing_committee)
+    gate_seal.prolongLifetime(sender=sealing_committee)
     
     assert gate_seal.get_expiry_timestamp() == original_expiry + small_prolongation
 
@@ -272,4 +272,4 @@ def test_prolong_exactly_at_expiry(
     # Should not be able to prolong at expiry
     assert gate_seal.is_expired()
     with pytest.raises(VirtualMachineError, match="gate seal: expired"):
-        gate_seal.prolong(sender=sealing_committee)
+        gate_seal.prolongLifetime(sender=sealing_committee)
