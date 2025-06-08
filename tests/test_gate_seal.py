@@ -61,7 +61,7 @@ def test_gate_seal_can_be_created_with_valid_parameters(
         prolongation_activation_window_seconds,
         sender=deployer,
     )
-    
+
     # Check all parameters are set correctly
     info = gate_seal.get_seal_info()
     assert info[0] == sealing_committee  # sealing_committee
@@ -70,7 +70,9 @@ def test_gate_seal_can_be_created_with_valid_parameters(
     assert info[3] == lifetime_duration_seconds  # lifetime_duration_seconds
     assert info[5] == max_prolongations  # max_prolongations
     assert info[6] == 0  # prolongations_used
-    assert info[7] == prolongation_activation_window_seconds  # prolongation_activation_window_seconds
+    assert (
+        info[7] == prolongation_activation_window_seconds
+    )  # prolongation_activation_window_seconds
     assert info[8] == False  # is_used
 
 
@@ -94,7 +96,7 @@ def test_seal_duration_validation(
             prolongation_activation_window_seconds,
             sender=deployer,
         )
-    
+
     # Too long seal duration
     with pytest.raises(ContractLogicError, match="seal duration too long"):
         project.GateSeal.deploy(
@@ -128,7 +130,7 @@ def test_lifetime_duration_validation(
             prolongation_activation_window_seconds,
             sender=deployer,
         )
-    
+
     # Too long lifetime duration
     with pytest.raises(ContractLogicError, match="lifetime duration too long"):
         project.GateSeal.deploy(
@@ -184,7 +186,7 @@ def test_prolongation_activation_window_validation(
             MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS - 1,
             sender=deployer,
         )
-    
+
     # Too long activation window
     with pytest.raises(ContractLogicError, match="activation window too long"):
         project.GateSeal.deploy(
@@ -196,9 +198,11 @@ def test_prolongation_activation_window_validation(
             MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS + 1,
             sender=deployer,
         )
-    
+
     # Activation window longer than lifetime duration
-    with pytest.raises(ContractLogicError, match="activation window cannot exceed lifetime duration"):
+    with pytest.raises(
+        ContractLogicError, match="activation window cannot exceed lifetime duration"
+    ):
         project.GateSeal.deploy(
             sealing_committee,
             seal_duration_seconds,
@@ -217,7 +221,7 @@ def test_seal_success_with_valid_sealables(
 ):
     # Should successfully seal
     gate_seal.seal(sealables, sender=sealing_committee)
-    
+
     # Should be marked as used
     assert gate_seal.is_used() == True
 
@@ -238,7 +242,7 @@ def test_seal_fails_if_already_used(
 ):
     # Use the seal first
     gate_seal.seal(sealables, sender=sealing_committee)
-    
+
     # Second attempt should fail
     with pytest.raises(ContractLogicError, match="gate seal already used"):
         gate_seal.seal(sealables, sender=sealing_committee)
@@ -255,7 +259,7 @@ def test_prolong_lifetime_success(
     # Create GateSeal with short lifetime duration and short activation window
     lifetime_duration = SECONDS_PER_WEEK * 2  # 2 weeks
     activation_window = SECONDS_PER_WEEK  # 1 week
-    
+
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
@@ -265,23 +269,23 @@ def test_prolong_lifetime_success(
         activation_window,
         sender=deployer,
     )
-    
+
     initial_expiry = gate_seal.expiry_timestamp()
-    
+
     # Fast forward to activation window
     chain = project.provider.network.ecosystem.get_chain("ethereum")
     chain.mine(deltatime=lifetime_duration - activation_window + 1)
-    
+
     # Should be able to prolong
     assert gate_seal.can_prolong_lifetime() == True
-    
+
     # Prolong lifetime
     gate_seal.prolongLifetime(sender=sealing_committee)
-    
+
     # Check that expiry was extended
     new_expiry = gate_seal.expiry_timestamp()
     assert new_expiry == initial_expiry + lifetime_duration
-    
+
     # Check prolongations used
     assert gate_seal.prolongations_used() == 1
 
@@ -305,7 +309,7 @@ def test_prolong_lifetime_fails_if_no_prolongations_remaining(
     # Create GateSeal with 0 prolongations
     lifetime_duration = SECONDS_PER_WEEK * 2  # 2 weeks
     activation_window = SECONDS_PER_WEEK  # 1 week
-    
+
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
@@ -315,14 +319,14 @@ def test_prolong_lifetime_fails_if_no_prolongations_remaining(
         activation_window,
         sender=deployer,
     )
-    
+
     # Fast forward to activation window
     chain = project.provider.network.ecosystem.get_chain("ethereum")
     chain.mine(deltatime=lifetime_duration - activation_window + 1)
-    
+
     # Should not be able to prolong
     assert gate_seal.can_prolong_lifetime() == False
-    
+
     # Prolong should fail
     with pytest.raises(ContractLogicError, match="no prolongations remaining"):
         gate_seal.prolongLifetime(sender=sealing_committee)
@@ -340,7 +344,7 @@ def test_prolong_lifetime_fails_if_not_committee(
     # Create GateSeal with short lifetime duration
     lifetime_duration = SECONDS_PER_WEEK * 2  # 2 weeks
     activation_window = SECONDS_PER_WEEK  # 1 week
-    
+
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
@@ -350,11 +354,11 @@ def test_prolong_lifetime_fails_if_not_committee(
         activation_window,
         sender=deployer,
     )
-    
+
     # Fast forward to activation window
     chain = project.provider.network.ecosystem.get_chain("ethereum")
     chain.mine(deltatime=lifetime_duration - activation_window + 1)
-    
+
     # Stranger cannot prolong
     with pytest.raises(ContractLogicError, match="unauthorized caller"):
         gate_seal.prolongLifetime(sender=stranger)
@@ -371,7 +375,7 @@ def test_is_expired_functionality(
 ):
     # Create GateSeal with very short lifetime
     lifetime_duration = 1  # 1 second
-    
+
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
@@ -381,14 +385,14 @@ def test_is_expired_functionality(
         prolongation_activation_window_seconds,
         sender=deployer,
     )
-    
+
     # Should not be expired initially
     assert gate_seal.is_expired() == False
-    
+
     # Fast forward past expiry
     chain = project.provider.network.ecosystem.get_chain("ethereum")
     chain.mine(deltatime=lifetime_duration + 1)
-    
+
     # Should be expired now
     assert gate_seal.is_expired() == True
 
@@ -796,21 +800,28 @@ def test_cannot_seal_twice_in_one_tx(gate_seal, sealables, sealing_committee):
         gate_seal.seal(sealables, sender=sealing_committee)
 
 
-def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(project, deployer, generate_sealables, sealing_committee, seal_duration_seconds, expiry_timestamp):
+def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
+    project,
+    deployer,
+    generate_sealables,
+    sealing_committee,
+    seal_duration_seconds,
+    expiry_timestamp,
+):
     """
-        `raw_call` without `max_outsize` and with `revert_on_failure=True` for some reason returns the boolean value of memory[0] :^)
+    `raw_call` without `max_outsize` and with `revert_on_failure=True` for some reason returns the boolean value of memory[0] :^)
 
-        Which is why we specify `max_outsize=32`, even though don't actually use it.
+    Which is why we specify `max_outsize=32`, even though don't actually use it.
 
-        To test that `success` returns actual value instead of returning bool of memory[0],
-        we need to pause the contract before the sealing,
-        so that the condition `success and is_paused()` is false (i.e `False and True`), see GateSeal.vy::seal()
+    To test that `success` returns actual value instead of returning bool of memory[0],
+    we need to pause the contract before the sealing,
+    so that the condition `success and is_paused()` is false (i.e `False and True`), see GateSeal.vy::seal()
 
-        For that, we use `__force_pause_for` on SealableMock to ignore any checks and forcefully pause the contract.
-        After calling this function, the SealableMock is paused but the call to `pauseFor` will still revert,
-        thus the returned `success` should be False, the condition fails and the call reverts altogether.
+    For that, we use `__force_pause_for` on SealableMock to ignore any checks and forcefully pause the contract.
+    After calling this function, the SealableMock is paused but the call to `pauseFor` will still revert,
+    thus the returned `success` should be False, the condition fails and the call reverts altogether.
 
-        Without `max_outsize=32`, the transaction would not revert.
+    Without `max_outsize=32`, the transaction would not revert.
     """
 
     unpausable = False
@@ -818,7 +829,7 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(project
     # we'll use only 1 sealable
     sealables = generate_sealables(1, unpausable, should_revert)
 
-    # deploy GateSeal 
+    # deploy GateSeal
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
