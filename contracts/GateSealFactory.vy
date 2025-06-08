@@ -13,7 +13,7 @@
      The blueprint must follow EIP-5202 and, thus, is not a
      functioning GateSeal itself but only its deployment code.
 
-     Updated to support new GateSeal logic with initial lifetime,
+     Updated to support new GateSeal logic with lifetime duration,
      prolongations, and activation windows.
 
      More on blueprints
@@ -26,15 +26,15 @@
 event GateSealCreated:
     gate_seal: address
 
-# Constants matching GateSeal contract
+# Constants for validation (must match GateSeal.vy)
 MAX_SEALABLES: constant(uint256) = 8
-MIN_INITIAL_LIFETIME_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
-MAX_INITIAL_LIFETIME_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
+MIN_SEAL_DURATION_SECONDS: constant(uint256) = 6 * 24 * 60 * 60    # 6 days
+MAX_SEAL_DURATION_SECONDS: constant(uint256) = 21 * 24 * 60 * 60   # 21 days
+MIN_LIFETIME_DURATION_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
+MAX_LIFETIME_DURATION_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
 MAX_PROLONGATIONS: constant(uint256) = 5
 MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
 MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 month
-MIN_SEAL_DURATION_SECONDS: constant(uint256) = 6 * 24 * 60 * 60  # 6 days
-MAX_SEAL_DURATION_SECONDS: constant(uint256) = 21 * 24 * 60 * 60  # 21 days
 
 # First 3 bytes of the blueprint are the EIP-5202 header;
 # The actual code of the contract starts at 4th byte.
@@ -159,7 +159,7 @@ def _validate_gate_seal_params(
         return False
     
     # Validate lifetime duration
-    if _lifetime_duration_seconds < MIN_INITIAL_LIFETIME_SECONDS or _lifetime_duration_seconds > MAX_INITIAL_LIFETIME_SECONDS:
+    if _lifetime_duration_seconds < MIN_LIFETIME_DURATION_SECONDS or _lifetime_duration_seconds > MAX_LIFETIME_DURATION_SECONDS:
         return False
     
     # Validate prolongations

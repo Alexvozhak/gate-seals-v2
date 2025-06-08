@@ -15,8 +15,8 @@ MAX_SEAL_DURATION_DAYS = 21
 MAX_SEAL_DURATION_SECONDS = SECONDS_PER_DAY * MAX_SEAL_DURATION_DAYS
 
 # Lifetime duration constraints (1 month - 1 year) - applies to each period
-MIN_INITIAL_LIFETIME_SECONDS = SECONDS_PER_MONTH  # 1 month - minimum duration for each lifetime period
-MAX_INITIAL_LIFETIME_SECONDS = SECONDS_PER_YEAR   # 1 year - maximum duration for each lifetime period
+MIN_LIFETIME_DURATION_SECONDS = SECONDS_PER_MONTH  # 1 month - minimum duration for each lifetime period
+MAX_LIFETIME_DURATION_SECONDS = SECONDS_PER_YEAR   # 1 year - maximum duration for each lifetime period
 
 # Prolongation constraints
 MAX_PROLONGATIONS = 5

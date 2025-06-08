@@ -58,8 +58,8 @@ def __init__(
 
 ```python
 # Ограничения lifetime duration (1 месяц - 1 год) - применяется к каждому периоду
-MIN_INITIAL_LIFETIME_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
-MAX_INITIAL_LIFETIME_SECONDS = 365 * 24 * 60 * 60  # 1 год
+MIN_LIFETIME_DURATION_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
+MAX_LIFETIME_DURATION_SECONDS = 365 * 24 * 60 * 60  # 1 год
 
 # Ограничения продлений
 MAX_PROLONGATIONS = 5

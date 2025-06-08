@@ -12,9 +12,9 @@
      hold a vote, implement fixes, etc. GateSeal can only be used once.
      GateSeal assumes that they have the permission to pause the contracts.
 
-     GateSeals have an initial lifetime (1 month to 1 year) and can be extended
-     up to 5 times. Each extension period equals the initial lifetime duration.
-     Extensions can only be activated within a specified activation window
+     GateSeals have a lifetime duration (1 month to 1 year) and can be extended
+     up to 5 times. Each prolongation period equals the lifetime duration.
+     Prolongations can only be activated within a specified activation window
      (1 week to 1 month) before the current expiry timestamp.
 
      GateSeals are only a temporary solution and will be deprecated in the future,
@@ -30,8 +30,8 @@ interface IPausable:
 MAX_SEALABLES: constant(uint256) = 8
 
 # New constants for the updated logic
-MIN_INITIAL_LIFETIME_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
-MAX_INITIAL_LIFETIME_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
+MIN_LIFETIME_DURATION_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
+MAX_LIFETIME_DURATION_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
 MAX_PROLONGATIONS: constant(uint256) = 5
 MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
 MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 month
@@ -99,8 +99,8 @@ def __init__(
     assert _seal_duration_seconds <= MAX_SEAL_DURATION_SECONDS, "seal duration too long"
     
     # Validate lifetime duration
-    assert _lifetime_duration_seconds >= MIN_INITIAL_LIFETIME_SECONDS, "lifetime duration too short"
-    assert _lifetime_duration_seconds <= MAX_INITIAL_LIFETIME_SECONDS, "lifetime duration too long"
+    assert _lifetime_duration_seconds >= MIN_LIFETIME_DURATION_SECONDS, "lifetime duration too short"
+    assert _lifetime_duration_seconds <= MAX_LIFETIME_DURATION_SECONDS, "lifetime duration too long"
     
     # Validate prolongations
     assert _max_prolongations <= MAX_PROLONGATIONS, "too many prolongations"
@@ -204,9 +204,8 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
 @external
 def prolongLifetime():
     """
-    @notice prolongs the GateSeal lifetime by the initial lifetime duration
-    @dev can only be called by sealing committee, within the activation window,
-         and only if prolongations are remaining
+    @notice prolongs the GateSeal lifetime by the lifetime duration
+    @dev can only be called by sealing committee and within activation window
     """
     assert msg.sender == self.sealing_committee, "unauthorized caller"
     assert self.prolongations_used < self.max_prolongations, "no prolongations remaining"

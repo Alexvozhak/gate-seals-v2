@@ -6,8 +6,8 @@ from utils.blueprint import deploy_blueprint, construct_blueprint_deploy_bytecod
 from utils.constants import (
     MAX_SEALABLES, 
     MIN_SEALABLES,
-    MIN_INITIAL_LIFETIME_SECONDS,
-    MAX_INITIAL_LIFETIME_SECONDS,
+    MIN_LIFETIME_DURATION_SECONDS,
+    MAX_LIFETIME_DURATION_SECONDS,
     MAX_PROLONGATIONS,
     MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS,
     MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS,
@@ -74,7 +74,7 @@ def seal_duration_seconds():
 @pytest.fixture(scope="function")
 def lifetime_duration_seconds():
     # Random lifetime duration between 1-6 months for testing
-    return randint(MIN_INITIAL_LIFETIME_SECONDS, SECONDS_PER_MONTH * 6)
+    return randint(MIN_LIFETIME_DURATION_SECONDS, SECONDS_PER_MONTH * 6)
 
 
 @pytest.fixture(scope="function")
