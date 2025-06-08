@@ -72,9 +72,6 @@ max_prolongations: public(uint256)            # Maximum number of prolongations 
 prolongations_used: public(uint256)           # Number of prolongations already used
 prolongation_window_seconds: public(uint256)  # Window before expiry when prolongations can be activated
 
-# whether the seal was used. This is a one-time use contract
-is_used: public(bool)
-
 @deploy
 def __init__(
     _sealing_committee: address,
@@ -114,7 +111,6 @@ def __init__(
     self.max_prolongations = _max_prolongations
     self.prolongations_used = 0
     self.prolongation_window_seconds = _prolongation_window_seconds
-    self.is_used = False
 
 @external
 def seal(_sealables: DynArray[address, MAX_SEALABLES]):
@@ -126,14 +122,12 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
     """
     assert msg.sender == self.sealing_committee, "unauthorized caller"
     assert block.timestamp < self.expiry_timestamp, "gate seal expired"
-    assert not self.is_used, "gate seal already used"
     assert len(_sealables) > 0, "must provide sealables"
 
     # Verify all provided sealables are in the allowed list
     for sealable: address in _sealables:
         assert sealable in self.sealables, "sealable not in list"
 
-    self.is_used = True
     failed_sealables: DynArray[uint256, MAX_SEALABLES] = []
 
     for i: uint256 in range(MAX_SEALABLES):
@@ -194,6 +188,9 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
     # Revert if any sealable failed to seal properly
     if len(failed_sealables) > 0:
         raise self._to_error_string(failed_sealables)
+
+    # Set expiry timestamp to current time - GateSeal can only be used once
+    self.expiry_timestamp = block.timestamp
 
     log Sealed(sealed_by=msg.sender, sealables=_sealables, sealed_for=self.seal_duration_seconds)
 
