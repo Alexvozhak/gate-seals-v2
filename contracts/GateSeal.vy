@@ -138,7 +138,6 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
         
         # Check current pause state before attempting to pause
         was_paused: bool = False
-        pause_call_success: bool = False
         
         # Get current pause state (with safety fallback)
         pause_check_success: bool = False
@@ -155,14 +154,14 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
             was_paused = convert(pause_response, bool)
         
         # Attempt to pause the contract
-        pause_success: bool = False
+        pause_call_success: bool = False
         pause_call_response: Bytes[32] = b""
-        pause_success, pause_call_response = raw_call(
+        pause_call_success, pause_call_response = raw_call(
             sealable, 
             concat(method_id("pauseFor(uint256)"), convert(self.seal_duration_seconds, bytes32)),
+            max_outsize=32,
             revert_on_failure=False
         )
-        pause_call_success = pause_success
         
         # Verify successful sealing: pause call succeeded AND (contract became paused OR was already paused)
         is_now_paused: bool = False

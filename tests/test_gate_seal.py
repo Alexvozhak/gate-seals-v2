@@ -1,8 +1,6 @@
 from ape import reverts
 import pytest
 import random
-from ape.exceptions import ContractLogicError
-
 
 from utils.constants import (
     MAX_SEAL_DURATION_SECONDS,
@@ -29,7 +27,7 @@ def test_committee_cannot_be_zero_address(
     max_prolongations,
     prolongation_window_seconds,
 ):
-    with pytest.raises(ContractLogicError, match="committee cannot be zero address"):
+    with reverts("committee cannot be zero address"):
         project.GateSeal.deploy(
             ZERO_ADDRESS,
             seal_duration_seconds,
@@ -83,7 +81,7 @@ def test_seal_duration_validation(
     prolongation_window_seconds,
 ):
     # Too short
-    with pytest.raises(ContractLogicError, match="seal duration too short"):
+    with reverts("seal duration too short"):
         project.GateSeal.deploy(
             sealing_committee,
             MIN_SEAL_DURATION_SECONDS - 1,
@@ -95,7 +93,7 @@ def test_seal_duration_validation(
         )
 
     # Too long
-    with pytest.raises(ContractLogicError, match="seal duration too long"):
+    with reverts("seal duration too long"):
         project.GateSeal.deploy(
             sealing_committee,
             MAX_SEAL_DURATION_SECONDS + 1,
@@ -217,7 +215,7 @@ def test_seal_fails_if_not_sealing_committee(
     stranger,
     sealables,
 ):
-    with pytest.raises(ContractLogicError, match="unauthorized caller"):
+    with reverts("unauthorized caller"):
         gate_seal.seal(sealables, sender=stranger)
 
 
@@ -230,7 +228,7 @@ def test_seal_fails_if_already_used(
     gate_seal.seal(sealables, sender=sealing_committee)
 
     # Second attempt should fail because GateSeal expired immediately after first use
-    with pytest.raises(ContractLogicError, match="gate seal expired"):
+    with reverts("gate seal expired"):
         gate_seal.seal(sealables, sender=sealing_committee)
 
 
@@ -281,7 +279,7 @@ def test_prolong_lifetime_fails_outside_activation_window(
     sealing_committee,
 ):
     # Too early - should fail
-    with pytest.raises(ContractLogicError, match="outside activation window"):
+    with reverts("outside activation window"):
         gate_seal.prolongLifetime(sender=sealing_committee)
 
 
@@ -314,7 +312,7 @@ def test_prolong_lifetime_fails_if_no_prolongations_remaining(
     assert gate_seal.can_prolong_lifetime() == False
 
     # Prolong should fail
-    with pytest.raises(ContractLogicError, match="no prolongations remaining"):
+    with reverts("no prolongations remaining"):
         gate_seal.prolongLifetime(sender=sealing_committee)
 
 
@@ -346,7 +344,7 @@ def test_prolong_lifetime_fails_if_not_committee(
     chain.mine(deltatime=lifetime_duration - activation_window + 1)
 
     # Stranger cannot prolong
-    with pytest.raises(ContractLogicError, match="unauthorized caller"):
+    with reverts("unauthorized caller"):
         gate_seal.prolongLifetime(sender=stranger)
 
 
@@ -902,9 +900,9 @@ def test_gate_seal_expires_immediately_after_use(
     assert new_expiry <= chain.pending_timestamp
     
     # Cannot be used again
-    with pytest.raises(ContractLogicError, match="gate seal expired"):
+    with reverts("gate seal expired"):
         gate_seal.seal(sealables, sender=sealing_committee)
     
     # Cannot be prolonged after use
-    with pytest.raises(ContractLogicError, match="gate seal expired"):
+    with reverts("gate seal expired"):
         gate_seal.prolongLifetime(sender=sealing_committee)
