@@ -62,10 +62,10 @@ sealables: public(DynArray[address, MAX_SEALABLES])
 seal_duration_seconds: public(uint256)
 
 # GateSeal lifetime parameters
-initial_lifetime_seconds: public(uint256)  # Duration of initial period and each prolongation
-expiry_timestamp: public(uint256)          # When the GateSeal expires
-max_prolongations: public(uint256)         # Maximum number of prolongations allowed
-prolongations_used: public(uint256)        # Number of prolongations already used
+lifetime_duration_seconds: public(uint256)    # Duration of each lifetime period (initial and each prolongation)
+expiry_timestamp: public(uint256)             # When the GateSeal expires
+max_prolongations: public(uint256)            # Maximum number of prolongations allowed
+prolongations_used: public(uint256)           # Number of prolongations already used
 prolongation_activation_window_seconds: public(uint256)  # Window before expiry when prolongations can be activated
 
 # whether the seal was used. This is a one-time use contract
@@ -76,7 +76,7 @@ def __init__(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _initial_lifetime_seconds: uint256,
+    _lifetime_duration_seconds: uint256,
     _max_prolongations: uint256,
     _prolongation_activation_window_seconds: uint256,
 ):
@@ -85,7 +85,7 @@ def __init__(
     @param _sealing_committee the address that can seal the contracts and prolong lifetime
     @param _seal_duration_seconds the duration for which the sealables will be paused (6-21 days)
     @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
-    @param _initial_lifetime_seconds the initial lifetime of the GateSeal (1 month - 1 year)
+    @param _lifetime_duration_seconds the duration of each lifetime period - initial and each prolongation (1 month - 1 year)
     @param _max_prolongations maximum number of lifetime prolongations allowed (0-5)
     @param _prolongation_activation_window_seconds time window before expiry when prolongations can be activated (1 week - 1 month)
     """
@@ -98,9 +98,9 @@ def __init__(
     assert _seal_duration_seconds >= MIN_SEAL_DURATION_SECONDS, "seal duration too short"
     assert _seal_duration_seconds <= MAX_SEAL_DURATION_SECONDS, "seal duration too long"
     
-    # Validate initial lifetime
-    assert _initial_lifetime_seconds >= MIN_INITIAL_LIFETIME_SECONDS, "initial lifetime too short"
-    assert _initial_lifetime_seconds <= MAX_INITIAL_LIFETIME_SECONDS, "initial lifetime too long"
+    # Validate lifetime duration
+    assert _lifetime_duration_seconds >= MIN_INITIAL_LIFETIME_SECONDS, "lifetime duration too short"
+    assert _lifetime_duration_seconds <= MAX_INITIAL_LIFETIME_SECONDS, "lifetime duration too long"
     
     # Validate prolongations
     assert _max_prolongations <= MAX_PROLONGATIONS, "too many prolongations"
@@ -108,13 +108,13 @@ def __init__(
     # Validate prolongation activation window
     assert _prolongation_activation_window_seconds >= MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS, "activation window too short"
     assert _prolongation_activation_window_seconds <= MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS, "activation window too long"
-    assert _prolongation_activation_window_seconds <= _initial_lifetime_seconds, "activation window cannot exceed lifetime"
+    assert _prolongation_activation_window_seconds <= _lifetime_duration_seconds, "activation window cannot exceed lifetime duration"
 
     self.sealing_committee = _sealing_committee
     self.seal_duration_seconds = _seal_duration_seconds
     self.sealables = _sealables
-    self.initial_lifetime_seconds = _initial_lifetime_seconds
-    self.expiry_timestamp = block.timestamp + _initial_lifetime_seconds
+    self.lifetime_duration_seconds = _lifetime_duration_seconds
+    self.expiry_timestamp = block.timestamp + _lifetime_duration_seconds
     self.max_prolongations = _max_prolongations
     self.prolongations_used = 0
     self.prolongation_activation_window_seconds = _prolongation_activation_window_seconds
@@ -222,9 +222,9 @@ def prolongLifetime():
     old_expiry: uint256 = self.expiry_timestamp
     
     # Overflow protection: check if addition would overflow
-    assert old_expiry <= max_value(uint256) - self.initial_lifetime_seconds, "timestamp overflow"
+    assert old_expiry <= max_value(uint256) - self.lifetime_duration_seconds, "timestamp overflow"
     
-    self.expiry_timestamp = old_expiry + self.initial_lifetime_seconds
+    self.expiry_timestamp = old_expiry + self.lifetime_duration_seconds
     self.prolongations_used += 1
     
     log LifetimeProlonged(
@@ -240,7 +240,7 @@ def get_seal_info() -> (
     address,  # sealing_committee
     uint256,  # seal_duration_seconds
     DynArray[address, MAX_SEALABLES],  # sealables
-    uint256,  # initial_lifetime_seconds
+    uint256,  # lifetime_duration_seconds
     uint256,  # expiry_timestamp
     uint256,  # max_prolongations
     uint256,  # prolongations_used
@@ -254,7 +254,7 @@ def get_seal_info() -> (
         self.sealing_committee,
         self.seal_duration_seconds,
         self.sealables,
-        self.initial_lifetime_seconds,
+        self.lifetime_duration_seconds,
         self.expiry_timestamp,
         self.max_prolongations,
         self.prolongations_used,
