@@ -30,7 +30,7 @@ A GateSeal is set up with an immutable configuration at the time of construction
 - the sealing committee, an account responsible for triggering the seal,
 - the seal duration, a period for which the contracts will be sealed,
 - the sealables, a list of contracts to be sealed,
-- the initial lifetime, a period after which the GateSeal becomes unusable,
+- the lifetime duration, the duration of each lifetime period (both initial and each prolongation),
 - the maximum number of prolongations allowed (0-5),
 - the prolongation activation window, a time window before expiry when prolongations can be activated.
 
@@ -161,7 +161,7 @@ ape run scripts/deploy_factory.py
 - `SEALING_COMMITTEE` - address of the sealing committee;
 - `SEAL_DURATION_SECONDS` - duration of the seal in seconds;
 - `SEALABLES` - a comma-separated list of pausable contracts;
-- `INITIAL_LIFETIME_SECONDS` - initial lifetime of the GateSeal in seconds;
+- `LIFETIME_DURATION_SECONDS` - duration of each lifetime period in seconds;
 - `MAX_PROLONGATIONS` - maximum number of prolongations allowed;
 - `PROLONGATION_ACTIVATION_WINDOW_SECONDS` - prolongation activation window in seconds.
 

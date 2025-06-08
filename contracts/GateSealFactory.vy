@@ -63,7 +63,7 @@ def create_gate_seal(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _initial_lifetime_seconds: uint256,
+    _lifetime_duration_seconds: uint256,
     _max_prolongations: uint256,
     _prolongation_activation_window_seconds: uint256,
 ) -> address:
@@ -72,7 +72,7 @@ def create_gate_seal(
     @param _sealing_committee the address that can seal the contracts and prolong lifetime
     @param _seal_duration_seconds the duration for which the sealables will be paused (6-21 days)
     @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
-    @param _initial_lifetime_seconds the initial lifetime of the GateSeal (1 month - 1 year)
+    @param _lifetime_duration_seconds the duration of each lifetime period - initial and each prolongation (1 month - 1 year)
     @param _max_prolongations maximum number of lifetime prolongations allowed (0-5)
     @param _prolongation_activation_window_seconds time window before expiry when prolongations can be activated (1 week - 1 month)
     @return the address of the newly created GateSeal
@@ -82,7 +82,7 @@ def create_gate_seal(
         _sealing_committee,
         _seal_duration_seconds,
         _sealables,
-        _initial_lifetime_seconds,
+        _lifetime_duration_seconds,
         _max_prolongations,
         _prolongation_activation_window_seconds
     ), "invalid parameters"
@@ -92,7 +92,7 @@ def create_gate_seal(
         _sealing_committee,
         _seal_duration_seconds,
         _sealables,
-        _initial_lifetime_seconds,
+        _lifetime_duration_seconds,
         _max_prolongations,
         _prolongation_activation_window_seconds,
         salt=keccak256(
@@ -113,7 +113,7 @@ def validate_gate_seal_params(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _initial_lifetime_seconds: uint256,
+    _lifetime_duration_seconds: uint256,
     _max_prolongations: uint256,
     _prolongation_activation_window_seconds: uint256,
 ) -> bool:
@@ -126,7 +126,7 @@ def validate_gate_seal_params(
         _sealing_committee,
         _seal_duration_seconds,
         _sealables,
-        _initial_lifetime_seconds,
+        _lifetime_duration_seconds,
         _max_prolongations,
         _prolongation_activation_window_seconds
     )
@@ -137,7 +137,7 @@ def _validate_gate_seal_params(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _initial_lifetime_seconds: uint256,
+    _lifetime_duration_seconds: uint256,
     _max_prolongations: uint256,
     _prolongation_activation_window_seconds: uint256,
 ) -> bool:
@@ -158,8 +158,8 @@ def _validate_gate_seal_params(
     if _seal_duration_seconds < MIN_SEAL_DURATION_SECONDS or _seal_duration_seconds > MAX_SEAL_DURATION_SECONDS:
         return False
     
-    # Validate initial lifetime
-    if _initial_lifetime_seconds < MIN_INITIAL_LIFETIME_SECONDS or _initial_lifetime_seconds > MAX_INITIAL_LIFETIME_SECONDS:
+    # Validate lifetime duration
+    if _lifetime_duration_seconds < MIN_INITIAL_LIFETIME_SECONDS or _lifetime_duration_seconds > MAX_INITIAL_LIFETIME_SECONDS:
         return False
     
     # Validate prolongations
@@ -171,7 +171,7 @@ def _validate_gate_seal_params(
         return False
     if _prolongation_activation_window_seconds > MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS:
         return False
-    if _prolongation_activation_window_seconds > _initial_lifetime_seconds:
+    if _prolongation_activation_window_seconds > _lifetime_duration_seconds:
         return False
     
     # Check for zero addresses in sealables

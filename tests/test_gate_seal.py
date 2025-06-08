@@ -26,7 +26,7 @@ def test_committee_cannot_be_zero_address(
     deployer,
     seal_duration_seconds,
     sealables,
-    initial_lifetime_seconds,
+    lifetime_duration_seconds,
     max_prolongations,
     prolongation_activation_window_seconds,
 ):
@@ -35,7 +35,7 @@ def test_committee_cannot_be_zero_address(
             ZERO_ADDRESS,
             seal_duration_seconds,
             sealables,
-            initial_lifetime_seconds,
+            lifetime_duration_seconds,
             max_prolongations,
             prolongation_activation_window_seconds,
             sender=deployer,
@@ -48,7 +48,7 @@ def test_gate_seal_can_be_created_with_valid_parameters(
     sealing_committee,
     seal_duration_seconds,
     sealables,
-    initial_lifetime_seconds,
+    lifetime_duration_seconds,
     max_prolongations,
     prolongation_activation_window_seconds,
 ):
@@ -56,7 +56,7 @@ def test_gate_seal_can_be_created_with_valid_parameters(
         sealing_committee,
         seal_duration_seconds,
         sealables,
-        initial_lifetime_seconds,
+        lifetime_duration_seconds,
         max_prolongations,
         prolongation_activation_window_seconds,
         sender=deployer,
@@ -67,7 +67,7 @@ def test_gate_seal_can_be_created_with_valid_parameters(
     assert info[0] == sealing_committee  # sealing_committee
     assert info[1] == seal_duration_seconds  # seal_duration_seconds
     assert info[2] == sealables  # sealables
-    assert info[3] == initial_lifetime_seconds  # initial_lifetime_seconds
+    assert info[3] == lifetime_duration_seconds  # lifetime_duration_seconds
     assert info[5] == max_prolongations  # max_prolongations
     assert info[6] == 0  # prolongations_used
     assert info[7] == prolongation_activation_window_seconds  # prolongation_activation_window_seconds
@@ -79,7 +79,7 @@ def test_seal_duration_validation(
     deployer,
     sealing_committee,
     sealables,
-    initial_lifetime_seconds,
+    lifetime_duration_seconds,
     max_prolongations,
     prolongation_activation_window_seconds,
 ):
@@ -89,7 +89,7 @@ def test_seal_duration_validation(
             sealing_committee,
             MIN_SEAL_DURATION_SECONDS - 1,
             sealables,
-            initial_lifetime_seconds,
+            lifetime_duration_seconds,
             max_prolongations,
             prolongation_activation_window_seconds,
             sender=deployer,
@@ -101,14 +101,14 @@ def test_seal_duration_validation(
             sealing_committee,
             MAX_SEAL_DURATION_SECONDS + 1,
             sealables,
-            initial_lifetime_seconds,
+            lifetime_duration_seconds,
             max_prolongations,
             prolongation_activation_window_seconds,
             sender=deployer,
         )
 
 
-def test_initial_lifetime_validation(
+def test_lifetime_duration_validation(
     project,
     deployer,
     sealing_committee,
@@ -117,8 +117,8 @@ def test_initial_lifetime_validation(
     max_prolongations,
     prolongation_activation_window_seconds,
 ):
-    # Too short initial lifetime
-    with pytest.raises(ContractLogicError, match="initial lifetime too short"):
+    # Too short lifetime duration
+    with pytest.raises(ContractLogicError, match="lifetime duration too short"):
         project.GateSeal.deploy(
             sealing_committee,
             seal_duration_seconds,
@@ -129,8 +129,8 @@ def test_initial_lifetime_validation(
             sender=deployer,
         )
     
-    # Too long initial lifetime
-    with pytest.raises(ContractLogicError, match="initial lifetime too long"):
+    # Too long lifetime duration
+    with pytest.raises(ContractLogicError, match="lifetime duration too long"):
         project.GateSeal.deploy(
             sealing_committee,
             seal_duration_seconds,
@@ -148,7 +148,7 @@ def test_prolongations_validation(
     sealing_committee,
     seal_duration_seconds,
     sealables,
-    initial_lifetime_seconds,
+    lifetime_duration_seconds,
     prolongation_activation_window_seconds,
 ):
     # Too many prolongations
@@ -157,7 +157,7 @@ def test_prolongations_validation(
             sealing_committee,
             seal_duration_seconds,
             sealables,
-            initial_lifetime_seconds,
+            lifetime_duration_seconds,
             MAX_PROLONGATIONS + 1,
             prolongation_activation_window_seconds,
             sender=deployer,
@@ -170,7 +170,7 @@ def test_prolongation_activation_window_validation(
     sealing_committee,
     seal_duration_seconds,
     sealables,
-    initial_lifetime_seconds,
+    lifetime_duration_seconds,
     max_prolongations,
 ):
     # Too short activation window
@@ -179,7 +179,7 @@ def test_prolongation_activation_window_validation(
             sealing_committee,
             seal_duration_seconds,
             sealables,
-            initial_lifetime_seconds,
+            lifetime_duration_seconds,
             max_prolongations,
             MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS - 1,
             sender=deployer,
@@ -191,21 +191,21 @@ def test_prolongation_activation_window_validation(
             sealing_committee,
             seal_duration_seconds,
             sealables,
-            initial_lifetime_seconds,
+            lifetime_duration_seconds,
             max_prolongations,
             MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS + 1,
             sender=deployer,
         )
     
-    # Activation window longer than lifetime
-    with pytest.raises(ContractLogicError, match="activation window cannot exceed lifetime"):
+    # Activation window longer than lifetime duration
+    with pytest.raises(ContractLogicError, match="activation window cannot exceed lifetime duration"):
         project.GateSeal.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
-            initial_lifetime_seconds,
+            lifetime_duration_seconds,
             max_prolongations,
-            initial_lifetime_seconds + 1,
+            lifetime_duration_seconds + 1,
             sender=deployer,
         )
 
@@ -252,15 +252,15 @@ def test_prolong_lifetime_success(
     sealables,
     max_prolongations,
 ):
-    # Create GateSeal with short initial lifetime and short activation window
-    initial_lifetime = SECONDS_PER_WEEK * 2  # 2 weeks
+    # Create GateSeal with short lifetime duration and short activation window
+    lifetime_duration = SECONDS_PER_WEEK * 2  # 2 weeks
     activation_window = SECONDS_PER_WEEK  # 1 week
     
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
-        initial_lifetime,
+        lifetime_duration,
         max_prolongations,
         activation_window,
         sender=deployer,
@@ -270,7 +270,7 @@ def test_prolong_lifetime_success(
     
     # Fast forward to activation window
     chain = project.provider.network.ecosystem.get_chain("ethereum")
-    chain.mine(deltatime=initial_lifetime - activation_window + 1)
+    chain.mine(deltatime=lifetime_duration - activation_window + 1)
     
     # Should be able to prolong
     assert gate_seal.can_prolong_lifetime() == True
@@ -280,7 +280,7 @@ def test_prolong_lifetime_success(
     
     # Check that expiry was extended
     new_expiry = gate_seal.expiry_timestamp()
-    assert new_expiry == initial_expiry + initial_lifetime
+    assert new_expiry == initial_expiry + lifetime_duration
     
     # Check prolongations used
     assert gate_seal.prolongations_used() == 1
@@ -303,14 +303,14 @@ def test_prolong_lifetime_fails_if_no_prolongations_remaining(
     sealables,
 ):
     # Create GateSeal with 0 prolongations
-    initial_lifetime = SECONDS_PER_WEEK * 2  # 2 weeks
+    lifetime_duration = SECONDS_PER_WEEK * 2  # 2 weeks
     activation_window = SECONDS_PER_WEEK  # 1 week
     
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
-        initial_lifetime,
+        lifetime_duration,
         0,  # no prolongations
         activation_window,
         sender=deployer,
@@ -318,7 +318,7 @@ def test_prolong_lifetime_fails_if_no_prolongations_remaining(
     
     # Fast forward to activation window
     chain = project.provider.network.ecosystem.get_chain("ethereum")
-    chain.mine(deltatime=initial_lifetime - activation_window + 1)
+    chain.mine(deltatime=lifetime_duration - activation_window + 1)
     
     # Should not be able to prolong
     assert gate_seal.can_prolong_lifetime() == False
@@ -337,15 +337,15 @@ def test_prolong_lifetime_fails_if_not_committee(
     sealables,
     max_prolongations,
 ):
-    # Create GateSeal with short initial lifetime
-    initial_lifetime = SECONDS_PER_WEEK * 2  # 2 weeks
+    # Create GateSeal with short lifetime duration
+    lifetime_duration = SECONDS_PER_WEEK * 2  # 2 weeks
     activation_window = SECONDS_PER_WEEK  # 1 week
     
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
-        initial_lifetime,
+        lifetime_duration,
         max_prolongations,
         activation_window,
         sender=deployer,
@@ -353,7 +353,7 @@ def test_prolong_lifetime_fails_if_not_committee(
     
     # Fast forward to activation window
     chain = project.provider.network.ecosystem.get_chain("ethereum")
-    chain.mine(deltatime=initial_lifetime - activation_window + 1)
+    chain.mine(deltatime=lifetime_duration - activation_window + 1)
     
     # Stranger cannot prolong
     with pytest.raises(ContractLogicError, match="unauthorized caller"):
@@ -370,13 +370,13 @@ def test_is_expired_functionality(
     prolongation_activation_window_seconds,
 ):
     # Create GateSeal with very short lifetime
-    initial_lifetime = 1  # 1 second
+    lifetime_duration = 1  # 1 second
     
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
-        initial_lifetime,
+        lifetime_duration,
         max_prolongations,
         prolongation_activation_window_seconds,
         sender=deployer,
@@ -387,7 +387,7 @@ def test_is_expired_functionality(
     
     # Fast forward past expiry
     chain = project.provider.network.ecosystem.get_chain("ethereum")
-    chain.mine(deltatime=initial_lifetime + 1)
+    chain.mine(deltatime=lifetime_duration + 1)
     
     # Should be expired now
     assert gate_seal.is_expired() == True

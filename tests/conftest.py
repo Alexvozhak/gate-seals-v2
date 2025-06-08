@@ -72,8 +72,8 @@ def seal_duration_seconds():
 
 
 @pytest.fixture(scope="function")
-def initial_lifetime_seconds():
-    # Random initial lifetime between 1-6 months for testing
+def lifetime_duration_seconds():
+    # Random lifetime duration between 1-6 months for testing
     return randint(MIN_INITIAL_LIFETIME_SECONDS, SECONDS_PER_MONTH * 6)
 
 
@@ -84,9 +84,9 @@ def max_prolongations():
 
 
 @pytest.fixture(scope="function")
-def prolongation_activation_window_seconds(initial_lifetime_seconds):
-    # Random activation window (1 week to 1 month, but not exceeding initial lifetime)
-    max_window = min(MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS, initial_lifetime_seconds)
+def prolongation_activation_window_seconds(lifetime_duration_seconds):
+    # Random activation window (1 week to 1 month, but not exceeding lifetime duration)
+    max_window = min(MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS, lifetime_duration_seconds)
     return randint(MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS, max_window)
 
 
@@ -97,7 +97,7 @@ def gate_seal(
     sealing_committee,
     seal_duration_seconds,
     sealables,
-    initial_lifetime_seconds,
+    lifetime_duration_seconds,
     max_prolongations,
     prolongation_activation_window_seconds,
 ):
@@ -105,7 +105,7 @@ def gate_seal(
         sealing_committee,
         seal_duration_seconds,
         sealables,
-        initial_lifetime_seconds,
+        lifetime_duration_seconds,
         max_prolongations,
         prolongation_activation_window_seconds,
         sender=deployer,
