@@ -1,8 +1,19 @@
 import pytest
+import time
 from random import randint
-from ape.logging import logger
 from utils.blueprint import deploy_blueprint, construct_blueprint_deploy_bytecode
-from utils.constants import MAX_EXPIRY_PERIOD_SECONDS, MAX_SEALABLES, MIN_SEALABLES
+from utils.constants import (
+    MAX_SEAL_DURATION_SECONDS,
+    MIN_SEAL_DURATION_SECONDS,
+    MIN_LIFETIME_DURATION_SECONDS,
+    MAX_LIFETIME_DURATION_SECONDS,
+    MAX_PROLONGATIONS,
+    MIN_PROLONGATION_WINDOW_SECONDS,
+    MAX_PROLONGATION_WINDOW_SECONDS,
+    MAX_SEALABLES,
+    SECONDS_PER_MONTH,
+    SECONDS_PER_WEEK,
+)
 
 """
 
@@ -17,18 +28,13 @@ def deployer(accounts):
 
 
 @pytest.fixture(scope="session")
-def dao_agent(accounts):
+def sealing_committee(accounts):
     return accounts[1]
 
 
 @pytest.fixture(scope="session")
-def sealing_committee(accounts):
-    return accounts[2]
-
-
-@pytest.fixture(scope="session")
 def stranger(accounts):
-    return accounts[3]
+    return accounts[2]
 
 
 """
@@ -51,70 +57,120 @@ def gate_seal_factory(project, deployer, blueprint_address):
 
 
 @pytest.fixture(scope="function")
+def sealables(project, deployer):
+    # Create a single mock sealable for most tests
+    sealable = project.SealableMock.deploy(False, False, sender=deployer)
+    return [sealable.address]
+
+
+@pytest.fixture(scope="function")
+def seal_duration_seconds():
+    # Random seal duration between min and max (6-21 days)
+    return randint(MIN_SEAL_DURATION_SECONDS, MAX_SEAL_DURATION_SECONDS)
+
+
+@pytest.fixture(scope="function")
+def lifetime_duration_seconds():
+    # Random lifetime duration between 1-6 months for testing
+    return randint(MIN_LIFETIME_DURATION_SECONDS, SECONDS_PER_MONTH * 6)
+
+
+@pytest.fixture(scope="function")
+def max_prolongations():
+    # Random prolongations between 1-5
+    return randint(1, MAX_PROLONGATIONS)
+
+
+@pytest.fixture(scope="function")
+def prolongation_window_seconds(lifetime_duration_seconds):
+    # Random window (1 week to 1 month, but not exceeding lifetime duration)
+    max_window = min(MAX_PROLONGATION_WINDOW_SECONDS, lifetime_duration_seconds)
+    return randint(MIN_PROLONGATION_WINDOW_SECONDS, max_window)
+
+
+@pytest.fixture(scope="function")
 def gate_seal(
     project,
     deployer,
-    gate_seal_factory,
     sealing_committee,
     seal_duration_seconds,
     sealables,
-    expiry_timestamp,
+    lifetime_duration_seconds,
+    max_prolongations,
+    prolongation_window_seconds,
 ):
-    transaction = gate_seal_factory.create_gate_seal(
+    return project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
-        expiry_timestamp,
+        lifetime_duration_seconds,
+        max_prolongations,
+        prolongation_window_seconds,
         sender=deployer,
     )
 
-    gate_seal_address = transaction.events[0].gate_seal
 
-    return project.GateSeal.at(gate_seal_address)
+"""
+
+    UTILITY FIXTURES
+
+"""
 
 
 @pytest.fixture(scope="function")
-def sealables(generate_sealables):
-    return generate_sealables(randint(MIN_SEALABLES, MAX_SEALABLES))
-
-
-"""
-
-    TIME PERIODS
-
-"""
-
-
-@pytest.fixture(scope="session")
-def seal_duration_seconds(day):
-    return day * 7
+def multiple_sealables(project, deployer):
+    """Create multiple sealable contracts for testing"""
+    sealables = []
+    for i in range(3):  # Create 3 sealables
+        sealable = project.SealableMock.deploy(False, False, sender=deployer)
+        sealables.append(sealable.address)
+    return sealables
 
 
 @pytest.fixture(scope="function")
-def expiry_timestamp(now):
-    return now + MAX_EXPIRY_PERIOD_SECONDS
+def sealables_with_failures(project, deployer):
+    """Create sealables where some will fail to pause"""
+    sealables = []
+    # Normal sealable
+    normal = project.SealableMock.deploy(False, False, sender=deployer)
+    sealables.append(normal.address)
+    
+    # Unpausable sealable (fails silently)
+    unpausable = project.SealableMock.deploy(True, False, sender=deployer)
+    sealables.append(unpausable.address)
+    
+    # Reverting sealable
+    reverting = project.SealableMock.deploy(False, True, sender=deployer)
+    sealables.append(reverting.address)
+    
+    return sealables
 
 
 @pytest.fixture(scope="function")
-def now(chain):
-    return chain.pending_timestamp
+def advanced_sealable(project, deployer):
+    """Create an advanced sealable for complex testing scenarios"""
+    return project.AdvancedSealableMock.deploy(
+        False,  # gas_bomb_enabled
+        False,  # revert_on_pause
+        False,  # revert_on_is_paused
+        0,      # gas_consumption_loops
+        False,  # custom_is_paused_return
+        sender=deployer,
+    )
 
 
-@pytest.fixture(scope="session")
-def day():
-    return 60 * 60 * 24
+# Legacy fixtures for backward compatibility with old tests
+@pytest.fixture(scope="function")
+def prolongations():
+    return randint(1, MAX_PROLONGATIONS)
 
 
-"""
-
-    UTILS
-
-"""
+@pytest.fixture(scope="function")
+def prolongation_duration_seconds():
+    return randint(SECONDS_PER_WEEK, SECONDS_PER_MONTH * 2)
 
 
-@pytest.fixture(scope="session")
-def generate_sealables(project, deployer):
-    return lambda n, unpausable=False, reverts=False: [
-        project.SealableMock.deploy(unpausable, reverts, sender=deployer)
-        for _ in range(n)
-    ]
+@pytest.fixture(scope="function")
+def expiry_timestamp():
+    """Legacy fixture that returns a lambda for computing expiry timestamp"""
+    return lambda: int(time.time()) + randint(SECONDS_PER_MONTH, SECONDS_PER_MONTH * 6)

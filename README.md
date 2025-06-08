@@ -14,12 +14,13 @@ To put such crucial components of the Lido protocol as `WithdrawalQueue` and `Va
 
 Each GateSeal is operated by a committee, essentially a multisig account responsible for pulling the break in case things go awry. However, authorizing a committee to pause/resume the protocol withdrawals would be utterly reckless which is why GateSeals have a number of safeguards in place:
 - each GateSeal can only be activated only once and becomes unusable immediately after,
-- each GateSeal can only be activated within its expiry period of 1 year maximum and becomes unusable past its expiry timestamp even if it was never triggered,
-- the pause duration set at costruction time is limited to 14 days.
+- each GateSeal has a lifetime duration (1 month to 1 year) and can be extended up to 5 times,
+- prolongations can only be activated within 1 week to 1 month before expiry,
+- the pause duration set at construction time is limited to 21 days.
 
-Thus, the biggest damage a compromised GateSeal multisig can inflict is to pause withdrawals for 14 days, given the DAO does not resume withdrawals sooner via the governance voting.
+Thus, the biggest damage a compromised GateSeal multisig can inflict is to pause withdrawals for 21 days, given the DAO does not resume withdrawals sooner via the governance voting.
 
-With all that said, it still is undesireable for a decentralized protocol to rely on a multisig in any capacity. Which is why GateSeals are only a temporary solution; their limited lifespan and one-time use design also act as a kind of "inconvenience bomb", in that once expired, the GateSeal must be replaced and setup anew.
+With all that said, it still is undesirable for a decentralized protocol to rely on a multisig in any capacity. Which is why GateSeals are only a temporary solution; their limited lifespan and one-time use design also act as a kind of "inconvenience bomb", in that once expired, the GateSeal must be replaced and setup anew.
 
 ## How does it work?
 
@@ -29,17 +30,32 @@ A GateSeal is set up with an immutable configuration at the time of construction
 - the sealing committee, an account responsible for triggering the seal,
 - the seal duration, a period for which the contracts will be sealed,
 - the sealables, a list of contracts to be sealed,
-- the expiry period, a period after which the GateSeal becomes unusable. 
+- the lifetime duration, the duration of each lifetime period (both initial and each prolongation),
+- the maximum number of prolongations allowed (0-5),
+- the prolongation activation window, a time window before expiry when prolongations can be activated.
 
-Important to note, that GateSeals do not bypass the access control settings for pausable contracts, which is why GateSeals must be given the appropriate permissions beforehand. If and when an emergency arises, the sealing committee simply calls the seal function and puts the contracts on pause for the set duration. 
+Important to note, that GateSeals do not bypass the access control settings for pausable contracts, which is why GateSeals must be given the appropriate permissions beforehand. If and when an emergency arises, the sealing committee simply calls the seal function and puts the contracts on pause for the set duration.
+
+## GateSeal Lifetime Management
+
+```mermaid
+flowchart TD
+    A[Contract Active?] --> B{Need to Activate?}
+    B -->|Yes| C[Activate] --> Z[💀 Expiry]
+    B -->|No| D{Less than 1 month<br/>until expiry?}
+    D -->|No| D
+    D -->|Yes| E{Prolongations<br/>remaining?}
+    E -->|No| Z
+    E -->|Yes| F[Allow Prolongation] --> A
+```
 
 ## How are GateSeals created?
 
 GateSeals are created using the GateSealFactory. The factory uses the blueprint pattern whereby new GateSeals are deployed using the initcode (blueprint) stored onchain. The blueprint is essentially a broken GateSeal that can only be used to create new GateSeals.
 
-While Vyper offers other ways to create new contracts, we opted to use the blueprint pattern because it creates a fully autonomous contract without any dependencies. Unlike other contract-creating functions, [`create_from_blueprint`](https://docs.vyperlang.org/en/stable/built-in-functions.html#chain-interaction) invokes the constructor of the contract, thus, helping avoid the initilization shenanigans.
+While Vyper offers other ways to create new contracts, we opted to use the blueprint pattern because it creates a fully autonomous contract without any dependencies. Unlike other contract-creating functions, [`create_from_blueprint`](https://docs.vyperlang.org/en/stable/built-in-functions.html#chain-interaction) invokes the constructor of the contract, thus, helping avoid the initialization shenanigans.
 
-The blueprint follows the [EIP-5202](https://eips.ethereum.org/EIPS/eip-5202) format, which includes a header that makes the contract uncallable and specifies the version. 
+The blueprint follows the [EIP-5202](https://eips.ethereum.org/EIPS/eip-5202) format, which includes a header that makes the contract uncallable and specifies the version.
 
 ## Dependencies
 
@@ -145,7 +161,9 @@ ape run scripts/deploy_factory.py
 - `SEALING_COMMITTEE` - address of the sealing committee;
 - `SEAL_DURATION_SECONDS` - duration of the seal in seconds;
 - `SEALABLES` - a comma-separated list of pausable contracts;
-- `EXPIRY_TIMESTAMP` - a unix epoch when GateSeal expires.
+- `LIFETIME_DURATION_SECONDS` - duration of each lifetime period in seconds;
+- `MAX_PROLONGATIONS` - maximum number of prolongations allowed;
+- `PROLONGATION_WINDOW_SECONDS` - prolongation window in seconds.
 
 4. Deploy the GateSeal using the deployed factory
 ```shell

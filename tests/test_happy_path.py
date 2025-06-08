@@ -1,4 +1,3 @@
-from ape.logging import logger
 from datetime import datetime
 from utils.blueprint import deploy_blueprint, construct_blueprint_deploy_bytecode
 
