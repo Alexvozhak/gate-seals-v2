@@ -1,11 +1,9 @@
 import pytest
 import time
 from random import randint
-from ape.logging import logger
 from utils.blueprint import deploy_blueprint, construct_blueprint_deploy_bytecode
 from utils.constants import (
     MAX_SEALABLES, 
-    MIN_SEALABLES,
     MIN_LIFETIME_DURATION_SECONDS,
     MAX_LIFETIME_DURATION_SECONDS,
     MAX_PROLONGATIONS,

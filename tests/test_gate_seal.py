@@ -1,5 +1,4 @@
 from ape import reverts
-from ape.logging import logger
 import pytest
 import random
 from ape.exceptions import ContractLogicError
