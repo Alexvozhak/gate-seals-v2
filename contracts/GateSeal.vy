@@ -42,6 +42,9 @@ MAX_PROLONGATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 mon
 MIN_SEAL_DURATION_SECONDS: constant(uint256) = 6 * 24 * 60 * 60  # 6 days
 MAX_SEAL_DURATION_SECONDS: constant(uint256) = 21 * 24 * 60 * 60  # 21 days
 
+MAX_EXPIRY_PERIOD_DAYS: constant(uint256) = 365 * 3  # 3 years
+MAX_EXPIRY_PERIOD_SECONDS: constant(uint256) = MAX_EXPIRY_PERIOD_DAYS * 24 * 60 * 60
+
 event Sealed:
     sealed_by: indexed(address)
     sealables: DynArray[address, MAX_SEALABLES]
@@ -69,53 +72,37 @@ max_prolongations: public(uint256)            # Maximum number of prolongations 
 prolongations_used: public(uint256)           # Number of prolongations already used
 prolongation_window_seconds: public(uint256)  # Window before expiry when prolongations can be activated
 
+# whether the seal was used. This is a one-time use contract
+is_used: public(bool)
+
 @deploy
 def __init__(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _lifetime_duration_seconds: uint256,
-    _max_prolongations: uint256,
-    _prolongation_window_seconds: uint256,
+    _expiry_timestamp: uint256,
 ):
     """
-    @notice creates a new GateSeal with specified parameters
-    @param _sealing_committee the address that can seal the contracts and prolong lifetime
-    @param _seal_duration_seconds the duration for which the sealables will be paused (6-21 days)
-    @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
-    @param _lifetime_duration_seconds the duration of each lifetime period - initial and each prolongation (1 month - 1 year)
-    @param _max_prolongations maximum number of lifetime prolongations allowed (0-5)
-    @param _prolongation_window_seconds time window before expiry when prolongations can be activated (1 week - 1 month)
+    @notice creates a new GateSeal with the given parameters
+    @param _sealing_committee the address that can seal the contracts
+    @param _seal_duration_seconds the duration for which the sealables will be paused
+    @param _sealables the addresses of the contracts that can be sealed
+    @param _expiry_timestamp timestamp after which the GateSeal expires
     """
     assert _sealing_committee != empty(address), "committee cannot be zero address"
     assert len(_sealables) >= 1, "must provide at least one sealable"
     assert len(_sealables) <= MAX_SEALABLES, "too many sealables"
     assert not self._has_duplicates(_sealables), "duplicate sealables"
-    
-    # Validate seal duration
     assert _seal_duration_seconds >= MIN_SEAL_DURATION_SECONDS, "seal duration too short"
     assert _seal_duration_seconds <= MAX_SEAL_DURATION_SECONDS, "seal duration too long"
-    
-    # Validate lifetime duration
-    assert _lifetime_duration_seconds >= MIN_LIFETIME_DURATION_SECONDS, "lifetime duration too short"
-    assert _lifetime_duration_seconds <= MAX_LIFETIME_DURATION_SECONDS, "lifetime duration too long"
-    
-    # Validate prolongations
-    assert _max_prolongations <= MAX_PROLONGATIONS, "too many prolongations"
-    
-    # Validate prolongation window
-    assert _prolongation_window_seconds >= MIN_PROLONGATION_WINDOW_SECONDS, "activation window too short"
-    assert _prolongation_window_seconds <= MAX_PROLONGATION_WINDOW_SECONDS, "activation window too long"
-    assert _prolongation_window_seconds <= _lifetime_duration_seconds, "activation window cannot exceed lifetime duration"
+    assert _expiry_timestamp > block.timestamp, "expiry timestamp must be in the future"
+    assert _expiry_timestamp <= block.timestamp + MAX_EXPIRY_PERIOD_SECONDS, "expiry timestamp exceeds max expiry period"
 
     self.sealing_committee = _sealing_committee
     self.seal_duration_seconds = _seal_duration_seconds
     self.sealables = _sealables
-    self.lifetime_duration_seconds = _lifetime_duration_seconds
-    self.expiry_timestamp = block.timestamp + _lifetime_duration_seconds
-    self.max_prolongations = _max_prolongations
-    self.prolongations_used = 0
-    self.prolongation_window_seconds = _prolongation_window_seconds
+    self.expiry_timestamp = _expiry_timestamp
+    self.is_used = False
 
 @external
 def seal(_sealables: DynArray[address, MAX_SEALABLES]):
@@ -124,18 +111,17 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
     @param _sealables a subset of sealables passed to the constructor.
                      can pause multiple contracts in the same call 
     @dev this function can be used only once and only by sealing committee
-         after use, the GateSeal immediately expires
     """
     assert msg.sender == self.sealing_committee, "unauthorized caller"
     assert block.timestamp < self.expiry_timestamp, "gate seal expired"
+    assert not self.is_used, "gate seal already used"
     assert len(_sealables) > 0, "must provide sealables"
 
     # Verify all provided sealables are in the allowed list
     for sealable: address in _sealables:
         assert sealable in self.sealables, "sealable not in list"
 
-    # Expire immediately after use - this is a one-time panic button
-    self.expiry_timestamp = block.timestamp
+    self.is_used = True
     failed_sealables: DynArray[uint256, MAX_SEALABLES] = []
 
     for i: uint256 in range(MAX_SEALABLES):
