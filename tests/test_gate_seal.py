@@ -67,12 +67,13 @@ def test_gate_seal_can_be_created_with_valid_parameters(
     assert info[1] == seal_duration_seconds  # seal_duration_seconds
     assert info[2] == sealables  # sealables
     assert info[3] == lifetime_duration_seconds  # lifetime_duration_seconds
+    assert info[4] > 0  # expiry_timestamp (should be set)
     assert info[5] == max_prolongations  # max_prolongations
     assert info[6] == 0  # prolongations_used
     assert (
         info[7] == prolongation_activation_window_seconds
     )  # prolongation_activation_window_seconds
-    assert info[8] == False  # is_used
+    assert gate_seal.is_expired() == False  # not expired initially
 
 
 def test_seal_duration_validation(
@@ -221,8 +222,8 @@ def test_seal_success_with_valid_sealables(
     # Should successfully seal
     gate_seal.seal(sealables, sender=sealing_committee)
 
-    # Should be marked as used
-    assert gate_seal.is_used() == True
+    # Should be expired immediately after use (one-time panic button)
+    assert gate_seal.is_expired() == True
 
 
 def test_seal_fails_if_not_sealing_committee(
@@ -242,8 +243,8 @@ def test_seal_fails_if_already_used(
     # Use the seal first
     gate_seal.seal(sealables, sender=sealing_committee)
 
-    # Second attempt should fail
-    with pytest.raises(ContractLogicError, match="gate seal already used"):
+    # Second attempt should fail because GateSeal expired immediately after first use
+    with pytest.raises(ContractLogicError, match="gate seal expired"):
         gate_seal.seal(sealables, sender=sealing_committee)
 
 
@@ -847,3 +848,54 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
     # seal() should revert because `raw_call` to sealable returns `success=False`, even though isPaused() is True.
     with reverts("0"):
         gate_seal.seal(sealables, sender=sealing_committee)
+
+
+def test_gate_seal_expires_immediately_after_use(
+    project,
+    deployer,
+    sealing_committee,
+    seal_duration_seconds,
+    sealables,
+):
+    # Create GateSeal with long lifetime
+    lifetime_duration = SECONDS_PER_MONTH * 6  # 6 months
+    activation_window = SECONDS_PER_WEEK  # 1 week
+    
+    gate_seal = project.GateSeal.deploy(
+        sealing_committee,
+        seal_duration_seconds,
+        sealables,
+        lifetime_duration,
+        5,  # max prolongations
+        activation_window,
+        sender=deployer,
+    )
+    
+    # Initially should not be expired
+    assert gate_seal.is_expired() == False
+    
+    # Get initial expiry timestamp (should be far in the future)
+    initial_expiry = gate_seal.expiry_timestamp()
+    chain = project.provider.network.ecosystem.get_chain("ethereum")
+    current_time = chain.pending_timestamp
+    
+    # Verify expiry is in the future
+    assert initial_expiry > current_time
+    
+    # Use the seal
+    gate_seal.seal(sealables, sender=sealing_committee)
+    
+    # Should be expired immediately (expiry_timestamp set to current block.timestamp)
+    assert gate_seal.is_expired() == True
+    
+    # Expiry timestamp should be current time or very close to it
+    new_expiry = gate_seal.expiry_timestamp()
+    assert new_expiry <= chain.pending_timestamp
+    
+    # Cannot be used again
+    with pytest.raises(ContractLogicError, match="gate seal expired"):
+        gate_seal.seal(sealables, sender=sealing_committee)
+    
+    # Cannot be prolonged after use
+    with pytest.raises(ContractLogicError, match="gate seal expired"):
+        gate_seal.prolongLifetime(sender=sealing_committee)

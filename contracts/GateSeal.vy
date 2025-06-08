@@ -68,9 +68,6 @@ max_prolongations: public(uint256)            # Maximum number of prolongations 
 prolongations_used: public(uint256)           # Number of prolongations already used
 prolongation_activation_window_seconds: public(uint256)  # Window before expiry when prolongations can be activated
 
-# whether the seal was used. This is a one-time use contract
-is_used: public(bool)
-
 @deploy
 def __init__(
     _sealing_committee: address,
@@ -118,7 +115,6 @@ def __init__(
     self.max_prolongations = _max_prolongations
     self.prolongations_used = 0
     self.prolongation_activation_window_seconds = _prolongation_activation_window_seconds
-    self.is_used = False
 
 @external
 def seal(_sealables: DynArray[address, MAX_SEALABLES]):
@@ -127,17 +123,18 @@ def seal(_sealables: DynArray[address, MAX_SEALABLES]):
     @param _sealables a subset of sealables passed to the constructor.
                      can pause multiple contracts in the same call 
     @dev this function can be used only once and only by sealing committee
+         after use, the GateSeal immediately expires
     """
     assert msg.sender == self.sealing_committee, "unauthorized caller"
     assert block.timestamp < self.expiry_timestamp, "gate seal expired"
-    assert not self.is_used, "gate seal already used"
     assert len(_sealables) > 0, "must provide sealables"
 
     # Verify all provided sealables are in the allowed list
     for sealable: address in _sealables:
         assert sealable in self.sealables, "sealable not in list"
 
-    self.is_used = True
+    # Expire immediately after use - this is a one-time panic button
+    self.expiry_timestamp = block.timestamp
     failed_sealables: DynArray[uint256, MAX_SEALABLES] = []
 
     for i: uint256 in range(MAX_SEALABLES):
@@ -244,7 +241,6 @@ def get_seal_info() -> (
     uint256,  # max_prolongations
     uint256,  # prolongations_used
     uint256,  # prolongation_activation_window_seconds
-    bool      # is_used
 ):
     """
     @notice returns all the seal configuration and state information
@@ -258,7 +254,6 @@ def get_seal_info() -> (
         self.max_prolongations,
         self.prolongations_used,
         self.prolongation_activation_window_seconds,
-        self.is_used
     )
 
 @external 
