@@ -62,17 +62,14 @@ def test_gate_seal_can_be_created_with_valid_parameters(
     )
 
     # Check all parameters are set correctly
-    info = gate_seal.get_seal_info()
-    assert info[0] == sealing_committee  # sealing_committee
-    assert info[1] == seal_duration_seconds  # seal_duration_seconds
-    assert info[2] == sealables  # sealables
-    assert info[3] == lifetime_duration_seconds  # lifetime_duration_seconds
-    assert info[4] > 0  # expiry_timestamp (should be set)
-    assert info[5] == max_prolongations  # max_prolongations
-    assert info[6] == 0  # prolongations_used
-    assert (
-        info[7] == prolongation_window_seconds
-    )  # prolongation_window_seconds
+    assert gate_seal.sealing_committee() == sealing_committee
+    assert gate_seal.seal_duration_seconds() == seal_duration_seconds
+    assert gate_seal.sealables() == sealables
+    assert gate_seal.lifetime_duration_seconds() == lifetime_duration_seconds
+    assert gate_seal.expiry_timestamp() > 0  # should be set
+    assert gate_seal.max_prolongations() == max_prolongations
+    assert gate_seal.prolongations_used() == 0
+    assert gate_seal.prolongation_window_seconds() == prolongation_window_seconds
     assert gate_seal.is_expired() == False  # not expired initially
 
 

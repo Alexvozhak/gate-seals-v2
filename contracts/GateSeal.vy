@@ -233,32 +233,6 @@ def prolongLifetime():
 
 @external
 @view
-def get_seal_info() -> (
-    address,  # sealing_committee
-    uint256,  # seal_duration_seconds
-    DynArray[address, MAX_SEALABLES],  # sealables
-    uint256,  # lifetime_duration_seconds
-    uint256,  # expiry_timestamp
-    uint256,  # max_prolongations
-    uint256,  # prolongations_used
-    uint256,  # prolongation_window_seconds
-):
-    """
-    @notice returns all the seal configuration and state information
-    """
-    return (
-        self.sealing_committee,
-        self.seal_duration_seconds,
-        self.sealables,
-        self.lifetime_duration_seconds,
-        self.expiry_timestamp,
-        self.max_prolongations,
-        self.prolongations_used,
-        self.prolongation_window_seconds,
-    )
-
-@external 
-@view
 def can_prolong_lifetime() -> bool:
     """
     @notice checks if the GateSeal lifetime can be prolonged right now
