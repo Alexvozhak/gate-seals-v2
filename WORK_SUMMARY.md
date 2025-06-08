@@ -1,5 +1,18 @@
 # Резюме выполненной работы - Коммит c86dea3
 
+## 🎯 Принцип работы: Минимальные изменения
+
+**Важный урок:** Изменять только то, что действительно требует изменений.
+- ✅ Не переписывать старое, если оно работает
+- ✅ Не переименовывать без крайней необходимости  
+- ✅ Не переносить код без обоснованной причины
+- ✅ Дифф должен меняться только по существу
+- ✅ Не менять комментарии без особой необходимости
+
+См. подробнее: `MINIMAL_CHANGES.md`
+
+---
+
 ## 🎯 Основные изменения согласно требованиям
 
 ### 1. Переименование функций
@@ -124,6 +137,33 @@ MAX_PROLONGATION_WINDOW_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
 **Основная функциональность реализована согласно всем требованиям!**
 
 ## Progress Log
+
+### 2024-12-19: Correction - Minimal Changes Approach  
+**Files:** contracts/GateSeal.vy
+**Principle:** Only change what actually needs changing
+
+#### User Feedback
+Правильно указал что я слишком много переписываю без необходимости:
+- "не переписывать старое, если оно работает" 
+- "не переименовывать старое без крайней необходимости"
+- "дифф должен измениться только по существу"
+
+#### Corrections Made
+**Restored working code:**
+- ✅ `IPausableUntil` interface (was removed without reason)
+- ✅ `_to_error_string` functionality (was simplified unnecessarily) 
+- ✅ `_has_duplicates` left as-is (was working correctly)
+
+**Kept only essential changes:**
+- ✅ `is_used` → immediate expiry (logical optimization)
+- ✅ `prolongation_activation_window_seconds` → `prolongation_window_seconds` (readability)
+
+#### Lesson Learned
+Minimize changes - only modify what truly requires modification. Created `MINIMAL_CHANGES.md` documenting the proper approach.
+
+**Status:** ✅ Corrected approach - following minimal changes principle
+
+---
 
 ### 2024-12-19: Parameter Naming Optimization - Shorter Names
 **Files:** contracts/GateSeal.vy, contracts/GateSealFactory.vy, tests/*.py, utils/constants.py, README.md

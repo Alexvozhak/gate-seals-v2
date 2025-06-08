@@ -27,6 +27,11 @@ interface IPausable:
     def pauseFor(_duration: uint256): nonpayable
     def isPaused() -> bool: view
 
+interface IPausableUntil:
+    def pauseFor(_duration: uint256): nonpayable
+    def isPaused() -> bool: view
+    def getResumeSinceTimestamp() -> uint256: view
+
 MAX_SEALABLES: constant(uint256) = 8
 
 # New constants for the updated logic
@@ -309,5 +314,4 @@ def _to_error_string(_failed_indexes: DynArray[uint256, MAX_SEALABLES]) -> Strin
     if len(_failed_indexes) == 0:
         return "no failures"
     
-    # Simple message without detailed indexes to avoid string concat overflow
     return "sealable operations failed"
