@@ -11,7 +11,7 @@ GateSeal acts as a panic button that can pause one or more contracts for a speci
 - **One-time use**: Each GateSeal can only be used once
 - **Initial lifetime**: GateSeals have an initial lifetime (1 month to 1 year)
 - **Lifetime extensions**: Can be extended up to 5 times, each extension equals the initial lifetime duration
-- **Extension activation window**: Extensions can only be activated within a specified time window (1 week to 1 year) before expiry
+- **Extension activation window**: Extensions can only be activated within a specified time window (1 week to 1 month) before expiry
 - **Multiple targets**: Can pause up to 8 contracts simultaneously
 - **Emergency response**: Provides immediate pause capability without waiting for DAO votes
 
@@ -42,14 +42,14 @@ A factory contract that simplifies GateSeal deployment using EIP-5202 blueprints
 3. **Sealables** (`address[]`): List of pausable contracts (1-8 contracts)
 4. **Initial Lifetime** (`uint256`): Initial validity period of the GateSeal (1 month - 1 year)
 5. **Max Extensions** (`uint256`): Maximum number of lifetime extensions allowed (0-5)
-6. **Extension Activation Window** (`uint256`): Time before expiry when extensions can be activated (1 week - 1 year)
+6. **Extension Activation Window** (`uint256`): Time before expiry when extensions can be activated (1 week - 1 month)
 
 ### Constraints
 
 - **Seal Duration**: 6-21 days (518,400 - 1,814,400 seconds)
 - **Initial Lifetime**: 1 month - 1 year (2,592,000 - 31,536,000 seconds)
 - **Max Extensions**: 0-5 extensions
-- **Extension Activation Window**: 1 week - 1 year, cannot exceed initial lifetime
+- **Extension Activation Window**: 1 week - 1 month, cannot exceed initial lifetime
 - **Sealables**: 1-8 contracts, no duplicates, no zero addresses
 
 ## Usage
@@ -64,7 +64,7 @@ address gateSeal = factory.create_gate_seal(
     [contract1, contract2],   // sealable contracts
     90 * 24 * 60 * 60,       // 90 days initial lifetime
     3,                       // 3 extensions allowed
-    30 * 24 * 60 * 60        // 30 days activation window
+    30 * 24 * 60 * 60        // 30 days activation window (1 month)
 );
 ```
 

@@ -15,7 +15,7 @@
      GateSeals have an initial lifetime (1 month to 1 year) and can be extended
      up to 5 times. Each extension period equals the initial lifetime duration.
      Extensions can only be activated within a specified activation window
-     (1 week to 1 year) before the current expiry timestamp.
+     (1 week to 1 month) before the current expiry timestamp.
 
      GateSeals are only a temporary solution and will be deprecated in the future,
      as it is undesirable for the protocol to rely on a multisig. This was 
@@ -34,7 +34,7 @@ MIN_INITIAL_LIFETIME_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
 MAX_INITIAL_LIFETIME_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
 MAX_EXTENSIONS: constant(uint256) = 5
 MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
-MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
+MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 month
 MIN_SEAL_DURATION_SECONDS: constant(uint256) = 6 * 24 * 60 * 60  # 6 days
 MAX_SEAL_DURATION_SECONDS: constant(uint256) = 21 * 24 * 60 * 60  # 21 days
 
@@ -87,7 +87,7 @@ def __init__(
     @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
     @param _initial_lifetime_seconds the initial lifetime of the GateSeal (1 month - 1 year)
     @param _max_extensions maximum number of lifetime extensions allowed (0-5)
-    @param _extension_activation_window_seconds time window before expiry when extensions can be activated (1 week - 1 year)
+    @param _extension_activation_window_seconds time window before expiry when extensions can be activated (1 week - 1 month)
     """
     assert _sealing_committee != empty(address), "committee cannot be zero address"
     assert len(_sealables) >= 1, "must provide at least one sealable"

@@ -32,7 +32,7 @@ MIN_INITIAL_LIFETIME_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
 MAX_INITIAL_LIFETIME_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
 MAX_EXTENSIONS: constant(uint256) = 5
 MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
-MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
+MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 month
 MIN_SEAL_DURATION_SECONDS: constant(uint256) = 6 * 24 * 60 * 60  # 6 days
 MAX_SEAL_DURATION_SECONDS: constant(uint256) = 21 * 24 * 60 * 60  # 21 days
 
@@ -74,7 +74,7 @@ def create_gate_seal(
     @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
     @param _initial_lifetime_seconds the initial lifetime of the GateSeal (1 month - 1 year)
     @param _max_extensions maximum number of lifetime extensions allowed (0-5)
-    @param _extension_activation_window_seconds time window before expiry when extensions can be activated (1 week - 1 year)
+    @param _extension_activation_window_seconds time window before expiry when extensions can be activated (1 week - 1 month)
     @return the address of the newly created GateSeal
     """
     # Pre-validate all parameters to provide clear error messages

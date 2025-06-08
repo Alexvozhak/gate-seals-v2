@@ -85,7 +85,7 @@ def max_extensions():
 
 @pytest.fixture(scope="function")
 def extension_activation_window_seconds(initial_lifetime_seconds):
-    # Random activation window (1 week to half of initial lifetime)
+    # Random activation window (1 week to 1 month, but not exceeding initial lifetime)
     max_window = min(MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS, initial_lifetime_seconds)
     return randint(MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS, max_window)
 
