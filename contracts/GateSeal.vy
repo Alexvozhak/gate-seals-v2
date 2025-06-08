@@ -33,8 +33,8 @@ MAX_SEALABLES: constant(uint256) = 8
 MIN_LIFETIME_DURATION_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
 MAX_LIFETIME_DURATION_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
 MAX_PROLONGATIONS: constant(uint256) = 5
-MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
-MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 month
+MIN_PROLONGATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
+MAX_PROLONGATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 month
 MIN_SEAL_DURATION_SECONDS: constant(uint256) = 6 * 24 * 60 * 60  # 6 days
 MAX_SEAL_DURATION_SECONDS: constant(uint256) = 21 * 24 * 60 * 60  # 21 days
 
@@ -66,7 +66,7 @@ lifetime_duration_seconds: public(uint256)    # Duration of each lifetime period
 expiry_timestamp: public(uint256)             # When the GateSeal expires
 max_prolongations: public(uint256)            # Maximum number of prolongations allowed
 prolongations_used: public(uint256)           # Number of prolongations already used
-prolongation_activation_window_seconds: public(uint256)  # Window before expiry when prolongations can be activated
+prolongation_window_seconds: public(uint256)  # Window before expiry when prolongations can be activated
 
 @deploy
 def __init__(
@@ -75,7 +75,7 @@ def __init__(
     _sealables: DynArray[address, MAX_SEALABLES],
     _lifetime_duration_seconds: uint256,
     _max_prolongations: uint256,
-    _prolongation_activation_window_seconds: uint256,
+    _prolongation_window_seconds: uint256,
 ):
     """
     @notice creates a new GateSeal with specified parameters
@@ -84,7 +84,7 @@ def __init__(
     @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
     @param _lifetime_duration_seconds the duration of each lifetime period - initial and each prolongation (1 month - 1 year)
     @param _max_prolongations maximum number of lifetime prolongations allowed (0-5)
-    @param _prolongation_activation_window_seconds time window before expiry when prolongations can be activated (1 week - 1 month)
+    @param _prolongation_window_seconds time window before expiry when prolongations can be activated (1 week - 1 month)
     """
     assert _sealing_committee != empty(address), "committee cannot be zero address"
     assert len(_sealables) >= 1, "must provide at least one sealable"
@@ -102,10 +102,10 @@ def __init__(
     # Validate prolongations
     assert _max_prolongations <= MAX_PROLONGATIONS, "too many prolongations"
     
-    # Validate prolongation activation window
-    assert _prolongation_activation_window_seconds >= MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS, "activation window too short"
-    assert _prolongation_activation_window_seconds <= MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS, "activation window too long"
-    assert _prolongation_activation_window_seconds <= _lifetime_duration_seconds, "activation window cannot exceed lifetime duration"
+    # Validate prolongation window
+    assert _prolongation_window_seconds >= MIN_PROLONGATION_WINDOW_SECONDS, "activation window too short"
+    assert _prolongation_window_seconds <= MAX_PROLONGATION_WINDOW_SECONDS, "activation window too long"
+    assert _prolongation_window_seconds <= _lifetime_duration_seconds, "activation window cannot exceed lifetime duration"
 
     self.sealing_committee = _sealing_committee
     self.seal_duration_seconds = _seal_duration_seconds
@@ -114,7 +114,7 @@ def __init__(
     self.expiry_timestamp = block.timestamp + _lifetime_duration_seconds
     self.max_prolongations = _max_prolongations
     self.prolongations_used = 0
-    self.prolongation_activation_window_seconds = _prolongation_activation_window_seconds
+    self.prolongation_window_seconds = _prolongation_window_seconds
 
 @external
 def seal(_sealables: DynArray[address, MAX_SEALABLES]):
@@ -212,7 +212,7 @@ def prolongLifetime():
     if block.timestamp < self.expiry_timestamp:
         time_until_expiry = self.expiry_timestamp - block.timestamp
     
-    assert time_until_expiry <= self.prolongation_activation_window_seconds, "outside activation window"
+    assert time_until_expiry <= self.prolongation_window_seconds, "outside activation window"
     assert time_until_expiry > 0, "gate seal expired"
     
     old_expiry: uint256 = self.expiry_timestamp
@@ -240,7 +240,7 @@ def get_seal_info() -> (
     uint256,  # expiry_timestamp
     uint256,  # max_prolongations
     uint256,  # prolongations_used
-    uint256,  # prolongation_activation_window_seconds
+    uint256,  # prolongation_window_seconds
 ):
     """
     @notice returns all the seal configuration and state information
@@ -253,7 +253,7 @@ def get_seal_info() -> (
         self.expiry_timestamp,
         self.max_prolongations,
         self.prolongations_used,
-        self.prolongation_activation_window_seconds,
+        self.prolongation_window_seconds,
     )
 
 @external 
@@ -270,7 +270,7 @@ def can_prolong_lifetime() -> bool:
         return False
         
     time_until_expiry: uint256 = self.expiry_timestamp - block.timestamp
-    return time_until_expiry <= self.prolongation_activation_window_seconds
+    return time_until_expiry <= self.prolongation_window_seconds
 
 @external
 @view

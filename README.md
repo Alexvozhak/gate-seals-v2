@@ -163,7 +163,7 @@ ape run scripts/deploy_factory.py
 - `SEALABLES` - a comma-separated list of pausable contracts;
 - `LIFETIME_DURATION_SECONDS` - duration of each lifetime period in seconds;
 - `MAX_PROLONGATIONS` - maximum number of prolongations allowed;
-- `PROLONGATION_ACTIVATION_WINDOW_SECONDS` - prolongation activation window in seconds.
+- `PROLONGATION_WINDOW_SECONDS` - prolongation window in seconds.
 
 4. Deploy the GateSeal using the deployed factory
 ```shell

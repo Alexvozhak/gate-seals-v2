@@ -3,14 +3,14 @@ import time
 from random import randint
 from utils.blueprint import deploy_blueprint, construct_blueprint_deploy_bytecode
 from utils.constants import (
-    MAX_SEALABLES, 
+    MAX_SEAL_DURATION_SECONDS,
+    MIN_SEAL_DURATION_SECONDS,
     MIN_LIFETIME_DURATION_SECONDS,
     MAX_LIFETIME_DURATION_SECONDS,
     MAX_PROLONGATIONS,
-    MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS,
-    MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS,
-    MIN_SEAL_DURATION_SECONDS,
-    MAX_SEAL_DURATION_SECONDS,
+    MIN_PROLONGATION_WINDOW_SECONDS,
+    MAX_PROLONGATION_WINDOW_SECONDS,
+    MAX_SEALABLES,
     SECONDS_PER_MONTH,
     SECONDS_PER_WEEK,
 )
@@ -82,10 +82,10 @@ def max_prolongations():
 
 
 @pytest.fixture(scope="function")
-def prolongation_activation_window_seconds(lifetime_duration_seconds):
-    # Random activation window (1 week to 1 month, but not exceeding lifetime duration)
-    max_window = min(MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS, lifetime_duration_seconds)
-    return randint(MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS, max_window)
+def prolongation_window_seconds(lifetime_duration_seconds):
+    # Random window (1 week to 1 month, but not exceeding lifetime duration)
+    max_window = min(MAX_PROLONGATION_WINDOW_SECONDS, lifetime_duration_seconds)
+    return randint(MIN_PROLONGATION_WINDOW_SECONDS, max_window)
 
 
 @pytest.fixture(scope="function")
@@ -97,7 +97,7 @@ def gate_seal(
     sealables,
     lifetime_duration_seconds,
     max_prolongations,
-    prolongation_activation_window_seconds,
+    prolongation_window_seconds,
 ):
     return project.GateSeal.deploy(
         sealing_committee,
@@ -105,7 +105,7 @@ def gate_seal(
         sealables,
         lifetime_duration_seconds,
         max_prolongations,
-        prolongation_activation_window_seconds,
+        prolongation_window_seconds,
         sender=deployer,
     )
 

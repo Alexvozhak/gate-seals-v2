@@ -29,7 +29,7 @@ def __init__(
     _sealables: DynArray[address, MAX_SEALABLES],
     _lifetime_duration_seconds: uint256,        # 1 месяц - 1 год
     _max_prolongations: uint256,                # 0-5 продлений
-    _prolongation_activation_window_seconds: uint256,  # 1 неделя - 1 месяц
+    _prolongation_window_seconds: uint256,        # 1 неделя - 1 месяц
 )
 ```
 
@@ -65,8 +65,8 @@ MAX_LIFETIME_DURATION_SECONDS = 365 * 24 * 60 * 60  # 1 год
 MAX_PROLONGATIONS = 5
 
 # Окно активации продлений (1 неделя - 1 месяц)
-MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS = 7 * 24 * 60 * 60    # 1 неделя
-MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
+MIN_PROLONGATION_WINDOW_SECONDS = 7 * 24 * 60 * 60    # 1 неделя
+MAX_PROLONGATION_WINDOW_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
 ```
 
 ## 🛡️ Улучшения безопасности
@@ -81,7 +81,7 @@ MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
 ### Тесты валидации параметров:
 - `test_lifetime_duration_validation()` - проверка ограничений lifetime duration
 - `test_prolongations_validation()` - проверка количества продлений
-- `test_prolongation_activation_window_validation()` - проверка окна активации
+- `test_prolongation_window_validation()` - проверка окна активации
 
 ### Тесты функциональности:
 - `test_prolong_lifetime_success()` - успешное продление
@@ -125,6 +125,42 @@ MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
 
 ## Progress Log
 
+### 2024-12-19: Parameter Naming Optimization - Shorter Names
+**Files:** contracts/GateSeal.vy, contracts/GateSealFactory.vy, tests/*.py, utils/constants.py, README.md
+**Commit:** Renamed `prolongation_activation_window_seconds` → `prolongation_window_seconds`
+
+#### Problem
+User pointed out that `_prolongation_activation_window_seconds` (40+ characters) is too verbose and could be shortened for better readability.
+
+#### Solution Implemented
+**Renamed throughout entire codebase:**
+- `prolongation_activation_window_seconds` → `prolongation_window_seconds`
+- `MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS` → `MIN_PROLONGATION_WINDOW_SECONDS`
+- `MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS` → `MAX_PROLONGATION_WINDOW_SECONDS`
+- `_prolongation_activation_window_seconds` → `_prolongation_window_seconds`
+
+#### Benefits Achieved
+- **Better readability:** 40+ characters reduced to 28 characters
+- **Clearer code:** Removed redundant "activation" (implied by "window")
+- **Improved UX:** Shorter parameter names better for IDE experience
+- **Semantic clarity:** Full meaning preserved with concise naming
+
+#### Files Updated (7 total)
+- contracts/GateSeal.vy - constructor, storage variable, validation
+- contracts/GateSealFactory.vy - all parameter references
+- tests/test_gate_seal.py - all test functions and parameters
+- tests/conftest.py - fixture names and imports  
+- utils/constants.py - constant definitions
+- README.md - documentation references
+- WORK_SUMMARY.md - progress tracking
+
+#### Documentation
+Created `PARAMETER_RENAMING.md` with complete renaming documentation.
+
+**Status:** ✅ Complete - All naming optimized for better developer experience
+
+---
+
 ### 2024-12-19: Major Logic Optimization - Removed `is_used` Flag
 **Files:** contracts/GateSeal.vy, tests/test_gate_seal.py
 **Commit:** Logic optimization - removed redundant is_used flag
@@ -165,7 +201,7 @@ Created `LOGIC_CHANGES.md` with complete documentation of the optimization.
 1. **Function Renaming:** `prolong()` → `prolongLifetime()` 
 2. **Constructor Logic Overhaul:** 
    - Old params: `_expiry_timestamp`, `_prolongations`, `_prolongation_duration_seconds`
-   - New params: `_lifetime_duration_seconds`, `_max_prolongations`, `_prolongation_activation_window_seconds`
+   - New params: `_lifetime_duration_seconds`, `_max_prolongations`, `_prolongation_window_seconds`
 3. **New Extension Logic:** Only within activation window, max 5 extensions, each equals lifetime duration
 
 #### Implementation Process
