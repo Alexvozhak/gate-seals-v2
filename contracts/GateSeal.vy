@@ -30,7 +30,6 @@ interface IPausable:
 interface IPausableUntil:
     def pauseFor(_duration: uint256): nonpayable
     def isPaused() -> bool: view
-    def getResumeSinceTimestamp() -> uint256: view
 
 MAX_SEALABLES: constant(uint256) = 8
 
@@ -53,9 +52,6 @@ event LifetimeProlonged:
     old_expiry: uint256
     new_expiry: uint256
     prolongations_remaining: uint256
-
-event Expired:
-    pass
 
 # sealing committee that has the power to seal and prolong lifetime
 sealing_committee: public(address)
