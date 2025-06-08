@@ -80,14 +80,18 @@ def __init__(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _expiry_timestamp: uint256,
+    _lifetime_duration_seconds: uint256,
+    _max_prolongations: uint256,
+    _prolongation_window_seconds: uint256,
 ):
     """
     @notice creates a new GateSeal with the given parameters
     @param _sealing_committee the address that can seal the contracts
     @param _seal_duration_seconds the duration for which the sealables will be paused
     @param _sealables the addresses of the contracts that can be sealed
-    @param _expiry_timestamp timestamp after which the GateSeal expires
+    @param _lifetime_duration_seconds the duration of each lifetime period
+    @param _max_prolongations the maximum number of prolongations allowed
+    @param _prolongation_window_seconds the window before expiry when prolongations can be activated
     """
     assert _sealing_committee != empty(address), "committee cannot be zero address"
     assert len(_sealables) >= 1, "must provide at least one sealable"
@@ -95,13 +99,21 @@ def __init__(
     assert not self._has_duplicates(_sealables), "duplicate sealables"
     assert _seal_duration_seconds >= MIN_SEAL_DURATION_SECONDS, "seal duration too short"
     assert _seal_duration_seconds <= MAX_SEAL_DURATION_SECONDS, "seal duration too long"
-    assert _expiry_timestamp > block.timestamp, "expiry timestamp must be in the future"
-    assert _expiry_timestamp <= block.timestamp + MAX_EXPIRY_PERIOD_SECONDS, "expiry timestamp exceeds max expiry period"
+    assert _lifetime_duration_seconds >= MIN_LIFETIME_DURATION_SECONDS, "lifetime duration too short"
+    assert _lifetime_duration_seconds <= MAX_LIFETIME_DURATION_SECONDS, "lifetime duration too long"
+    assert _max_prolongations <= MAX_PROLONGATIONS, "max prolongations too high"
+    assert _prolongation_window_seconds >= MIN_PROLONGATION_WINDOW_SECONDS, "prolongation window too short"
+    assert _prolongation_window_seconds <= MAX_PROLONGATION_WINDOW_SECONDS, "prolongation window too long"
+    assert _prolongation_window_seconds <= _lifetime_duration_seconds, "prolongation window cannot exceed lifetime duration"
 
     self.sealing_committee = _sealing_committee
     self.seal_duration_seconds = _seal_duration_seconds
     self.sealables = _sealables
-    self.expiry_timestamp = _expiry_timestamp
+    self.lifetime_duration_seconds = _lifetime_duration_seconds
+    self.expiry_timestamp = block.timestamp + _lifetime_duration_seconds
+    self.max_prolongations = _max_prolongations
+    self.prolongations_used = 0
+    self.prolongation_window_seconds = _prolongation_window_seconds
     self.is_used = False
 
 @external
