@@ -14,7 +14,7 @@
      functioning GateSeal itself but only its deployment code.
 
      Updated to support new GateSeal logic with initial lifetime,
-     extensions, and activation windows.
+     prolongations, and activation windows.
 
      More on blueprints
      https://docs.vyperlang.org/en/v0.4.1/built-in-functions.html#chain-interaction
@@ -30,9 +30,9 @@ event GateSealCreated:
 MAX_SEALABLES: constant(uint256) = 8
 MIN_INITIAL_LIFETIME_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
 MAX_INITIAL_LIFETIME_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
-MAX_EXTENSIONS: constant(uint256) = 5
-MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
-MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 month
+MAX_PROLONGATIONS: constant(uint256) = 5
+MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
+MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 month
 MIN_SEAL_DURATION_SECONDS: constant(uint256) = 6 * 24 * 60 * 60  # 6 days
 MAX_SEAL_DURATION_SECONDS: constant(uint256) = 21 * 24 * 60 * 60  # 21 days
 
@@ -64,8 +64,8 @@ def create_gate_seal(
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
     _initial_lifetime_seconds: uint256,
-    _max_extensions: uint256,
-    _extension_activation_window_seconds: uint256,
+    _max_prolongations: uint256,
+    _prolongation_activation_window_seconds: uint256,
 ) -> address:
     """
     @notice creates a new GateSeal with the specified parameters
@@ -73,8 +73,8 @@ def create_gate_seal(
     @param _seal_duration_seconds the duration for which the sealables will be paused (6-21 days)
     @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
     @param _initial_lifetime_seconds the initial lifetime of the GateSeal (1 month - 1 year)
-    @param _max_extensions maximum number of lifetime extensions allowed (0-5)
-    @param _extension_activation_window_seconds time window before expiry when extensions can be activated (1 week - 1 month)
+    @param _max_prolongations maximum number of lifetime prolongations allowed (0-5)
+    @param _prolongation_activation_window_seconds time window before expiry when prolongations can be activated (1 week - 1 month)
     @return the address of the newly created GateSeal
     """
     # Pre-validate all parameters to provide clear error messages
@@ -83,8 +83,8 @@ def create_gate_seal(
         _seal_duration_seconds,
         _sealables,
         _initial_lifetime_seconds,
-        _max_extensions,
-        _extension_activation_window_seconds
+        _max_prolongations,
+        _prolongation_activation_window_seconds
     ), "invalid parameters"
     
     gate_seal: address = create_from_blueprint(
@@ -93,8 +93,8 @@ def create_gate_seal(
         _seal_duration_seconds,
         _sealables,
         _initial_lifetime_seconds,
-        _max_extensions,
-        _extension_activation_window_seconds,
+        _max_prolongations,
+        _prolongation_activation_window_seconds,
         salt=keccak256(
             concat(
                 convert(_sealing_committee, bytes32),
@@ -114,8 +114,8 @@ def validate_gate_seal_params(
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
     _initial_lifetime_seconds: uint256,
-    _max_extensions: uint256,
-    _extension_activation_window_seconds: uint256,
+    _max_prolongations: uint256,
+    _prolongation_activation_window_seconds: uint256,
 ) -> bool:
     """
     @notice validates GateSeal parameters before deployment (external view)
@@ -127,8 +127,8 @@ def validate_gate_seal_params(
         _seal_duration_seconds,
         _sealables,
         _initial_lifetime_seconds,
-        _max_extensions,
-        _extension_activation_window_seconds
+        _max_prolongations,
+        _prolongation_activation_window_seconds
     )
 
 @internal
@@ -138,8 +138,8 @@ def _validate_gate_seal_params(
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
     _initial_lifetime_seconds: uint256,
-    _max_extensions: uint256,
-    _extension_activation_window_seconds: uint256,
+    _max_prolongations: uint256,
+    _prolongation_activation_window_seconds: uint256,
 ) -> bool:
     """
     @notice validates GateSeal parameters before deployment (internal)
@@ -162,16 +162,16 @@ def _validate_gate_seal_params(
     if _initial_lifetime_seconds < MIN_INITIAL_LIFETIME_SECONDS or _initial_lifetime_seconds > MAX_INITIAL_LIFETIME_SECONDS:
         return False
     
-    # Validate extensions
-    if _max_extensions > MAX_EXTENSIONS:
+    # Validate prolongations
+    if _max_prolongations > MAX_PROLONGATIONS:
         return False
     
-    # Validate extension activation window
-    if _extension_activation_window_seconds < MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS:
+    # Validate prolongation activation window
+    if _prolongation_activation_window_seconds < MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS:
         return False
-    if _extension_activation_window_seconds > MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS:
+    if _prolongation_activation_window_seconds > MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS:
         return False
-    if _extension_activation_window_seconds > _initial_lifetime_seconds:
+    if _prolongation_activation_window_seconds > _initial_lifetime_seconds:
         return False
     
     # Check for zero addresses in sealables

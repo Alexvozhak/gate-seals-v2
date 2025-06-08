@@ -32,9 +32,9 @@ MAX_SEALABLES: constant(uint256) = 8
 # New constants for the updated logic
 MIN_INITIAL_LIFETIME_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
 MAX_INITIAL_LIFETIME_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
-MAX_EXTENSIONS: constant(uint256) = 5
-MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
-MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 month
+MAX_PROLONGATIONS: constant(uint256) = 5
+MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
+MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 30 * 24 * 60 * 60   # 1 month
 MIN_SEAL_DURATION_SECONDS: constant(uint256) = 6 * 24 * 60 * 60  # 6 days
 MAX_SEAL_DURATION_SECONDS: constant(uint256) = 21 * 24 * 60 * 60  # 21 days
 
@@ -47,7 +47,7 @@ event LifetimeExtended:
     extended_by: indexed(address)
     old_expiry: uint256
     new_expiry: uint256
-    extensions_remaining: uint256
+    prolongations_remaining: uint256
 
 event Expired:
     pass
@@ -62,11 +62,11 @@ sealables: public(DynArray[address, MAX_SEALABLES])
 seal_duration_seconds: public(uint256)
 
 # GateSeal lifetime parameters
-initial_lifetime_seconds: public(uint256)  # Duration of initial period and each extension
+initial_lifetime_seconds: public(uint256)  # Duration of initial period and each prolongation
 expiry_timestamp: public(uint256)          # When the GateSeal expires
-max_extensions: public(uint256)            # Maximum number of extensions allowed
-extensions_used: public(uint256)           # Number of extensions already used
-extension_activation_window_seconds: public(uint256)  # Window before expiry when extensions can be activated
+max_prolongations: public(uint256)         # Maximum number of prolongations allowed
+prolongations_used: public(uint256)        # Number of prolongations already used
+prolongation_activation_window_seconds: public(uint256)  # Window before expiry when prolongations can be activated
 
 # whether the seal was used. This is a one-time use contract
 is_used: public(bool)
@@ -77,8 +77,8 @@ def __init__(
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
     _initial_lifetime_seconds: uint256,
-    _max_extensions: uint256,
-    _extension_activation_window_seconds: uint256,
+    _max_prolongations: uint256,
+    _prolongation_activation_window_seconds: uint256,
 ):
     """
     @notice creates a new GateSeal with specified parameters
@@ -86,8 +86,8 @@ def __init__(
     @param _seal_duration_seconds the duration for which the sealables will be paused (6-21 days)
     @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
     @param _initial_lifetime_seconds the initial lifetime of the GateSeal (1 month - 1 year)
-    @param _max_extensions maximum number of lifetime extensions allowed (0-5)
-    @param _extension_activation_window_seconds time window before expiry when extensions can be activated (1 week - 1 month)
+    @param _max_prolongations maximum number of lifetime prolongations allowed (0-5)
+    @param _prolongation_activation_window_seconds time window before expiry when prolongations can be activated (1 week - 1 month)
     """
     assert _sealing_committee != empty(address), "committee cannot be zero address"
     assert len(_sealables) >= 1, "must provide at least one sealable"
@@ -102,22 +102,22 @@ def __init__(
     assert _initial_lifetime_seconds >= MIN_INITIAL_LIFETIME_SECONDS, "initial lifetime too short"
     assert _initial_lifetime_seconds <= MAX_INITIAL_LIFETIME_SECONDS, "initial lifetime too long"
     
-    # Validate extensions
-    assert _max_extensions <= MAX_EXTENSIONS, "too many extensions"
+    # Validate prolongations
+    assert _max_prolongations <= MAX_PROLONGATIONS, "too many prolongations"
     
-    # Validate extension activation window
-    assert _extension_activation_window_seconds >= MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS, "activation window too short"
-    assert _extension_activation_window_seconds <= MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS, "activation window too long"
-    assert _extension_activation_window_seconds <= _initial_lifetime_seconds, "activation window cannot exceed lifetime"
+    # Validate prolongation activation window
+    assert _prolongation_activation_window_seconds >= MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS, "activation window too short"
+    assert _prolongation_activation_window_seconds <= MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS, "activation window too long"
+    assert _prolongation_activation_window_seconds <= _initial_lifetime_seconds, "activation window cannot exceed lifetime"
 
     self.sealing_committee = _sealing_committee
     self.seal_duration_seconds = _seal_duration_seconds
     self.sealables = _sealables
     self.initial_lifetime_seconds = _initial_lifetime_seconds
     self.expiry_timestamp = block.timestamp + _initial_lifetime_seconds
-    self.max_extensions = _max_extensions
-    self.extensions_used = 0
-    self.extension_activation_window_seconds = _extension_activation_window_seconds
+    self.max_prolongations = _max_prolongations
+    self.prolongations_used = 0
+    self.prolongation_activation_window_seconds = _prolongation_activation_window_seconds
     self.is_used = False
 
 @external
@@ -206,17 +206,17 @@ def extendLifetime():
     """
     @notice extends the GateSeal lifetime by the initial lifetime duration
     @dev can only be called by sealing committee, within the activation window,
-         and only if extensions are remaining
+         and only if prolongations are remaining
     """
     assert msg.sender == self.sealing_committee, "unauthorized caller"
-    assert self.extensions_used < self.max_extensions, "no extensions remaining"
+    assert self.prolongations_used < self.max_prolongations, "no prolongations remaining"
     
-    # Check if we're within the extension activation window
+    # Check if we're within the prolongation activation window
     time_until_expiry: uint256 = 0
     if block.timestamp < self.expiry_timestamp:
         time_until_expiry = self.expiry_timestamp - block.timestamp
     
-    assert time_until_expiry <= self.extension_activation_window_seconds, "outside activation window"
+    assert time_until_expiry <= self.prolongation_activation_window_seconds, "outside activation window"
     assert time_until_expiry > 0, "gate seal expired"
     
     old_expiry: uint256 = self.expiry_timestamp
@@ -225,13 +225,13 @@ def extendLifetime():
     assert old_expiry <= max_value(uint256) - self.initial_lifetime_seconds, "timestamp overflow"
     
     self.expiry_timestamp = old_expiry + self.initial_lifetime_seconds
-    self.extensions_used += 1
+    self.prolongations_used += 1
     
     log LifetimeExtended(
         extended_by=msg.sender, 
         old_expiry=old_expiry, 
         new_expiry=self.expiry_timestamp, 
-        extensions_remaining=self.max_extensions - self.extensions_used
+        prolongations_remaining=self.max_prolongations - self.prolongations_used
     )
 
 @external
@@ -242,9 +242,9 @@ def get_seal_info() -> (
     DynArray[address, MAX_SEALABLES],  # sealables
     uint256,  # initial_lifetime_seconds
     uint256,  # expiry_timestamp
-    uint256,  # max_extensions
-    uint256,  # extensions_used
-    uint256,  # extension_activation_window_seconds
+    uint256,  # max_prolongations
+    uint256,  # prolongations_used
+    uint256,  # prolongation_activation_window_seconds
     bool      # is_used
 ):
     """
@@ -256,9 +256,9 @@ def get_seal_info() -> (
         self.sealables,
         self.initial_lifetime_seconds,
         self.expiry_timestamp,
-        self.max_extensions,
-        self.extensions_used,
-        self.extension_activation_window_seconds,
+        self.max_prolongations,
+        self.prolongations_used,
+        self.prolongation_activation_window_seconds,
         self.is_used
     )
 
@@ -267,16 +267,16 @@ def get_seal_info() -> (
 def can_extend_lifetime() -> bool:
     """
     @notice checks if the GateSeal lifetime can be extended right now
-    @return true if extension is possible, false otherwise
+    @return true if prolongation is possible, false otherwise
     """
-    if self.extensions_used >= self.max_extensions:
+    if self.prolongations_used >= self.max_prolongations:
         return False
     
     if block.timestamp >= self.expiry_timestamp:
         return False
         
     time_until_expiry: uint256 = self.expiry_timestamp - block.timestamp
-    return time_until_expiry <= self.extension_activation_window_seconds
+    return time_until_expiry <= self.prolongation_activation_window_seconds
 
 @external
 @view

@@ -5,8 +5,8 @@
 ### 1. Переименование функций
 - ✅ `prolong()` → `extendLifetime()`
 - ✅ Обновлена терминология во всех файлах
-- ✅ `prolongations` → `extensions`
-- ✅ `prolongation_duration` → `extension` (равный initial_lifetime)
+- ✅ `prolongations` → `prolongations` (возвращено к более точному термину)
+- ✅ `prolongation_duration` → `prolongation` (равный initial_lifetime)
 
 ### 2. Новая логика конструктора
 **Старые параметры:**
@@ -28,8 +28,8 @@ def __init__(
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
     _initial_lifetime_seconds: uint256,        # 1 месяц - 1 год
-    _max_extensions: uint256,                  # 0-5 продлений
-    _extension_activation_window_seconds: uint256,  # 1 неделя - 1 месяц
+    _max_prolongations: uint256,               # 0-5 продлений
+    _prolongation_activation_window_seconds: uint256,  # 1 неделя - 1 месяц
 )
 ```
 
@@ -62,11 +62,11 @@ MIN_INITIAL_LIFETIME_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
 MAX_INITIAL_LIFETIME_SECONDS = 365 * 24 * 60 * 60  # 1 год
 
 # Ограничения продлений
-MAX_EXTENSIONS = 5
+MAX_PROLONGATIONS = 5
 
 # Окно активации продлений (1 неделя - 1 месяц)
-MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS = 7 * 24 * 60 * 60    # 1 неделя
-MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
+MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS = 7 * 24 * 60 * 60    # 1 неделя
+MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
 ```
 
 ## 🛡️ Улучшения безопасности
@@ -80,13 +80,13 @@ MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
 
 ### Тесты валидации параметров:
 - `test_initial_lifetime_validation()` - проверка ограничений initial lifetime
-- `test_extensions_validation()` - проверка количества продлений
-- `test_extension_activation_window_validation()` - проверка окна активации
+- `test_prolongations_validation()` - проверка количества продлений
+- `test_prolongation_activation_window_validation()` - проверка окна активации
 
 ### Тесты функциональности:
 - `test_extend_lifetime_success()` - успешное продление
 - `test_extend_lifetime_fails_outside_activation_window()` - ошибка вне окна
-- `test_extend_lifetime_fails_if_no_extensions_remaining()` - нет продлений
+- `test_extend_lifetime_fails_if_no_prolongations_remaining()` - нет продлений
 - `test_can_extend_lifetime()` - проверка возможности продления
 
 ## 📊 Статистика изменений
@@ -113,10 +113,11 @@ MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS = 30 * 24 * 60 * 60   # 1 месяц
 
 **Коммит c86dea3** содержит:
 - ✅ Полную реализацию новых требований
-- ✅ Переименование `prolong()` → `extendLifetime()`
-- ✅ Новую логику с initial lifetime и activation window (1 неделя - 1 месяц)
+- ✅ Переименование `prolong()` → `extendLifetime()` 
+- ✅ Новую логику с initial lifetime и prolongation activation window (1 неделя - 1 месяц)
 - ✅ Обновленные тесты и документацию
 - ✅ Улучшенную безопасность и валидацию
+- ✅ Правильную терминологию: `prolongation` вместо `extension`
 - ⚠️ Требует доработки raw_call логики в основном контракте
 
 **Основная функциональность реализована согласно всем требованиям!**

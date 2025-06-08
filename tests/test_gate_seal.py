@@ -12,9 +12,9 @@ from utils.constants import (
     ZERO_ADDRESS,
     MIN_INITIAL_LIFETIME_SECONDS,
     MAX_INITIAL_LIFETIME_SECONDS,
-    MAX_EXTENSIONS,
-    MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS,
-    MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS,
+    MAX_PROLONGATIONS,
+    MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS,
+    MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS,
     SECONDS_PER_DAY,
     SECONDS_PER_WEEK,
     SECONDS_PER_MONTH,
@@ -27,8 +27,8 @@ def test_committee_cannot_be_zero_address(
     seal_duration_seconds,
     sealables,
     initial_lifetime_seconds,
-    max_extensions,
-    extension_activation_window_seconds,
+    max_prolongations,
+    prolongation_activation_window_seconds,
 ):
     with pytest.raises(ContractLogicError, match="committee cannot be zero address"):
         project.GateSeal.deploy(
@@ -36,8 +36,8 @@ def test_committee_cannot_be_zero_address(
             seal_duration_seconds,
             sealables,
             initial_lifetime_seconds,
-            max_extensions,
-            extension_activation_window_seconds,
+            max_prolongations,
+            prolongation_activation_window_seconds,
             sender=deployer,
         )
 
@@ -49,16 +49,16 @@ def test_gate_seal_can_be_created_with_valid_parameters(
     seal_duration_seconds,
     sealables,
     initial_lifetime_seconds,
-    max_extensions,
-    extension_activation_window_seconds,
+    max_prolongations,
+    prolongation_activation_window_seconds,
 ):
     gate_seal = project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
         initial_lifetime_seconds,
-        max_extensions,
-        extension_activation_window_seconds,
+        max_prolongations,
+        prolongation_activation_window_seconds,
         sender=deployer,
     )
     
@@ -68,9 +68,9 @@ def test_gate_seal_can_be_created_with_valid_parameters(
     assert info[1] == seal_duration_seconds  # seal_duration_seconds
     assert info[2] == sealables  # sealables
     assert info[3] == initial_lifetime_seconds  # initial_lifetime_seconds
-    assert info[5] == max_extensions  # max_extensions
-    assert info[6] == 0  # extensions_used
-    assert info[7] == extension_activation_window_seconds  # extension_activation_window_seconds
+    assert info[5] == max_prolongations  # max_prolongations
+    assert info[6] == 0  # prolongations_used
+    assert info[7] == prolongation_activation_window_seconds  # prolongation_activation_window_seconds
     assert info[8] == False  # is_used
 
 
@@ -80,8 +80,8 @@ def test_seal_duration_validation(
     sealing_committee,
     sealables,
     initial_lifetime_seconds,
-    max_extensions,
-    extension_activation_window_seconds,
+    max_prolongations,
+    prolongation_activation_window_seconds,
 ):
     # Too short seal duration
     with pytest.raises(ContractLogicError, match="seal duration too short"):
@@ -90,8 +90,8 @@ def test_seal_duration_validation(
             MIN_SEAL_DURATION_SECONDS - 1,
             sealables,
             initial_lifetime_seconds,
-            max_extensions,
-            extension_activation_window_seconds,
+            max_prolongations,
+            prolongation_activation_window_seconds,
             sender=deployer,
         )
     
@@ -102,8 +102,8 @@ def test_seal_duration_validation(
             MAX_SEAL_DURATION_SECONDS + 1,
             sealables,
             initial_lifetime_seconds,
-            max_extensions,
-            extension_activation_window_seconds,
+            max_prolongations,
+            prolongation_activation_window_seconds,
             sender=deployer,
         )
 
@@ -114,8 +114,8 @@ def test_initial_lifetime_validation(
     sealing_committee,
     seal_duration_seconds,
     sealables,
-    max_extensions,
-    extension_activation_window_seconds,
+    max_prolongations,
+    prolongation_activation_window_seconds,
 ):
     # Too short initial lifetime
     with pytest.raises(ContractLogicError, match="initial lifetime too short"):
@@ -124,8 +124,8 @@ def test_initial_lifetime_validation(
             seal_duration_seconds,
             sealables,
             MIN_INITIAL_LIFETIME_SECONDS - 1,
-            max_extensions,
-            extension_activation_window_seconds,
+            max_prolongations,
+            prolongation_activation_window_seconds,
             sender=deployer,
         )
     
@@ -136,42 +136,42 @@ def test_initial_lifetime_validation(
             seal_duration_seconds,
             sealables,
             MAX_INITIAL_LIFETIME_SECONDS + 1,
-            max_extensions,
-            extension_activation_window_seconds,
+            max_prolongations,
+            prolongation_activation_window_seconds,
             sender=deployer,
         )
 
 
-def test_extensions_validation(
+def test_prolongations_validation(
     project,
     deployer,
     sealing_committee,
     seal_duration_seconds,
     sealables,
     initial_lifetime_seconds,
-    extension_activation_window_seconds,
+    prolongation_activation_window_seconds,
 ):
-    # Too many extensions
-    with pytest.raises(ContractLogicError, match="too many extensions"):
+    # Too many prolongations
+    with pytest.raises(ContractLogicError, match="too many prolongations"):
         project.GateSeal.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
             initial_lifetime_seconds,
-            MAX_EXTENSIONS + 1,
-            extension_activation_window_seconds,
+            MAX_PROLONGATIONS + 1,
+            prolongation_activation_window_seconds,
             sender=deployer,
         )
 
 
-def test_extension_activation_window_validation(
+def test_prolongation_activation_window_validation(
     project,
     deployer,
     sealing_committee,
     seal_duration_seconds,
     sealables,
     initial_lifetime_seconds,
-    max_extensions,
+    max_prolongations,
 ):
     # Too short activation window
     with pytest.raises(ContractLogicError, match="activation window too short"):
@@ -180,8 +180,8 @@ def test_extension_activation_window_validation(
             seal_duration_seconds,
             sealables,
             initial_lifetime_seconds,
-            max_extensions,
-            MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS - 1,
+            max_prolongations,
+            MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS - 1,
             sender=deployer,
         )
     
@@ -192,8 +192,8 @@ def test_extension_activation_window_validation(
             seal_duration_seconds,
             sealables,
             initial_lifetime_seconds,
-            max_extensions,
-            MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS + 1,
+            max_prolongations,
+            MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS + 1,
             sender=deployer,
         )
     
@@ -204,7 +204,7 @@ def test_extension_activation_window_validation(
             seal_duration_seconds,
             sealables,
             initial_lifetime_seconds,
-            max_extensions,
+            max_prolongations,
             initial_lifetime_seconds + 1,
             sender=deployer,
         )
@@ -250,7 +250,7 @@ def test_extend_lifetime_success(
     sealing_committee,
     seal_duration_seconds,
     sealables,
-    max_extensions,
+    max_prolongations,
 ):
     # Create GateSeal with short initial lifetime and short activation window
     initial_lifetime = SECONDS_PER_WEEK * 2  # 2 weeks
@@ -261,7 +261,7 @@ def test_extend_lifetime_success(
         seal_duration_seconds,
         sealables,
         initial_lifetime,
-        max_extensions,
+        max_prolongations,
         activation_window,
         sender=deployer,
     )
@@ -282,8 +282,8 @@ def test_extend_lifetime_success(
     new_expiry = gate_seal.expiry_timestamp()
     assert new_expiry == initial_expiry + initial_lifetime
     
-    # Check extensions used
-    assert gate_seal.extensions_used() == 1
+    # Check prolongations used
+    assert gate_seal.prolongations_used() == 1
 
 
 def test_extend_lifetime_fails_outside_activation_window(
@@ -295,14 +295,14 @@ def test_extend_lifetime_fails_outside_activation_window(
         gate_seal.extendLifetime(sender=sealing_committee)
 
 
-def test_extend_lifetime_fails_if_no_extensions_remaining(
+def test_extend_lifetime_fails_if_no_prolongations_remaining(
     project,
     deployer,
     sealing_committee,
     seal_duration_seconds,
     sealables,
 ):
-    # Create GateSeal with 0 extensions
+    # Create GateSeal with 0 prolongations
     initial_lifetime = SECONDS_PER_WEEK * 2  # 2 weeks
     activation_window = SECONDS_PER_WEEK  # 1 week
     
@@ -311,7 +311,7 @@ def test_extend_lifetime_fails_if_no_extensions_remaining(
         seal_duration_seconds,
         sealables,
         initial_lifetime,
-        0,  # no extensions
+        0,  # no prolongations
         activation_window,
         sender=deployer,
     )
@@ -324,7 +324,7 @@ def test_extend_lifetime_fails_if_no_extensions_remaining(
     assert gate_seal.can_extend_lifetime() == False
     
     # Extend should fail
-    with pytest.raises(ContractLogicError, match="no extensions remaining"):
+    with pytest.raises(ContractLogicError, match="no prolongations remaining"):
         gate_seal.extendLifetime(sender=sealing_committee)
 
 
@@ -335,7 +335,7 @@ def test_extend_lifetime_fails_if_not_committee(
     stranger,
     seal_duration_seconds,
     sealables,
-    max_extensions,
+    max_prolongations,
 ):
     # Create GateSeal with short initial lifetime
     initial_lifetime = SECONDS_PER_WEEK * 2  # 2 weeks
@@ -346,7 +346,7 @@ def test_extend_lifetime_fails_if_not_committee(
         seal_duration_seconds,
         sealables,
         initial_lifetime,
-        max_extensions,
+        max_prolongations,
         activation_window,
         sender=deployer,
     )
@@ -366,8 +366,8 @@ def test_is_expired_functionality(
     sealing_committee,
     seal_duration_seconds,
     sealables,
-    max_extensions,
-    extension_activation_window_seconds,
+    max_prolongations,
+    prolongation_activation_window_seconds,
 ):
     # Create GateSeal with very short lifetime
     initial_lifetime = 1  # 1 second
@@ -377,8 +377,8 @@ def test_is_expired_functionality(
         seal_duration_seconds,
         sealables,
         initial_lifetime,
-        max_extensions,
-        extension_activation_window_seconds,
+        max_prolongations,
+        prolongation_activation_window_seconds,
         sender=deployer,
     )
     

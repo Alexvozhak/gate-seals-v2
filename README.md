@@ -15,7 +15,7 @@ To put such crucial components of the Lido protocol as `WithdrawalQueue` and `Va
 Each GateSeal is operated by a committee, essentially a multisig account responsible for pulling the break in case things go awry. However, authorizing a committee to pause/resume the protocol withdrawals would be utterly reckless which is why GateSeals have a number of safeguards in place:
 - each GateSeal can only be activated only once and becomes unusable immediately after,
 - each GateSeal has an initial lifetime (1 month to 1 year) and can be extended up to 5 times,
-- extensions can only be activated within 1 week to 1 month before expiry,
+- prolongations can only be activated within 1 week to 1 month before expiry,
 - the pause duration set at construction time is limited to 21 days.
 
 Thus, the biggest damage a compromised GateSeal multisig can inflict is to pause withdrawals for 21 days, given the DAO does not resume withdrawals sooner via the governance voting.
@@ -31,8 +31,8 @@ A GateSeal is set up with an immutable configuration at the time of construction
 - the seal duration, a period for which the contracts will be sealed,
 - the sealables, a list of contracts to be sealed,
 - the initial lifetime, a period after which the GateSeal becomes unusable,
-- the maximum number of extensions allowed (0-5),
-- the extension activation window, a time window before expiry when extensions can be activated.
+- the maximum number of prolongations allowed (0-5),
+- the prolongation activation window, a time window before expiry when prolongations can be activated.
 
 Important to note, that GateSeals do not bypass the access control settings for pausable contracts, which is why GateSeals must be given the appropriate permissions beforehand. If and when an emergency arises, the sealing committee simply calls the seal function and puts the contracts on pause for the set duration.
 
@@ -44,9 +44,9 @@ flowchart TD
     B -->|Yes| C[Activate] --> Z[💀 Expiry]
     B -->|No| D{Less than 1 month<br/>until expiry?}
     D -->|No| D
-    D -->|Yes| E{Extensions<br/>remaining?}
+    D -->|Yes| E{Prolongations<br/>remaining?}
     E -->|No| Z
-    E -->|Yes| F[Allow Extension] --> A
+    E -->|Yes| F[Allow Prolongation] --> A
 ```
 
 ## How are GateSeals created?
@@ -162,8 +162,8 @@ ape run scripts/deploy_factory.py
 - `SEAL_DURATION_SECONDS` - duration of the seal in seconds;
 - `SEALABLES` - a comma-separated list of pausable contracts;
 - `INITIAL_LIFETIME_SECONDS` - initial lifetime of the GateSeal in seconds;
-- `MAX_EXTENSIONS` - maximum number of extensions allowed;
-- `EXTENSION_ACTIVATION_WINDOW_SECONDS` - extension activation window in seconds.
+- `MAX_PROLONGATIONS` - maximum number of prolongations allowed;
+- `PROLONGATION_ACTIVATION_WINDOW_SECONDS` - prolongation activation window in seconds.
 
 4. Deploy the GateSeal using the deployed factory
 ```shell

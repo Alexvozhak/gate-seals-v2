@@ -8,9 +8,9 @@ from utils.constants import (
     MIN_SEALABLES,
     MIN_INITIAL_LIFETIME_SECONDS,
     MAX_INITIAL_LIFETIME_SECONDS,
-    MAX_EXTENSIONS,
-    MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS,
-    MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS,
+    MAX_PROLONGATIONS,
+    MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS,
+    MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS,
     MIN_SEAL_DURATION_SECONDS,
     MAX_SEAL_DURATION_SECONDS,
     SECONDS_PER_MONTH,
@@ -78,16 +78,16 @@ def initial_lifetime_seconds():
 
 
 @pytest.fixture(scope="function")
-def max_extensions():
-    # Random extensions between 1-5
-    return randint(1, MAX_EXTENSIONS)
+def max_prolongations():
+    # Random prolongations between 1-5
+    return randint(1, MAX_PROLONGATIONS)
 
 
 @pytest.fixture(scope="function")
-def extension_activation_window_seconds(initial_lifetime_seconds):
+def prolongation_activation_window_seconds(initial_lifetime_seconds):
     # Random activation window (1 week to 1 month, but not exceeding initial lifetime)
-    max_window = min(MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS, initial_lifetime_seconds)
-    return randint(MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS, max_window)
+    max_window = min(MAX_PROLONGATION_ACTIVATION_WINDOW_SECONDS, initial_lifetime_seconds)
+    return randint(MIN_PROLONGATION_ACTIVATION_WINDOW_SECONDS, max_window)
 
 
 @pytest.fixture(scope="function")
@@ -98,16 +98,16 @@ def gate_seal(
     seal_duration_seconds,
     sealables,
     initial_lifetime_seconds,
-    max_extensions,
-    extension_activation_window_seconds,
+    max_prolongations,
+    prolongation_activation_window_seconds,
 ):
     return project.GateSeal.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
         initial_lifetime_seconds,
-        max_extensions,
-        extension_activation_window_seconds,
+        max_prolongations,
+        prolongation_activation_window_seconds,
         sender=deployer,
     )
 
@@ -164,7 +164,7 @@ def advanced_sealable(project, deployer):
 # Legacy fixtures for backward compatibility with old tests
 @pytest.fixture(scope="function")
 def prolongations():
-    return randint(1, MAX_EXTENSIONS)
+    return randint(1, MAX_PROLONGATIONS)
 
 
 @pytest.fixture(scope="function")
