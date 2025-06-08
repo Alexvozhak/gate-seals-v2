@@ -12,332 +12,298 @@
      hold a vote, implement fixes, etc. GateSeal can only be used once.
      GateSeal assumes that they have the permission to pause the contracts.
 
-     GateSeals are only a temporary solution and will be deprecated in the future,
-     as it is undesirable for the protocol to rely on a multisig. This is why
-     each GateSeal has an expiry date. Once expired, GateSeal is no longer
-     usable and a new GateSeal must be set up with a new multisig committee. This
-     works as a kind of difficulty bomb, a device that encourages the protocol
-     to get rid of GateSeals sooner rather than later.
+     GateSeals have an initial lifetime (1 month to 1 year) and can be extended
+     up to 5 times. Each extension period equals the initial lifetime duration.
+     Extensions can only be activated within a specified activation window
+     (1 week to 1 year) before the current expiry timestamp.
 
-     In the context of GateSeals, sealing is synonymous with pausing the contracts,
-     sealables are pausable contracts that implement `pauseFor(duration)` interface.
+     GateSeals are only a temporary solution and will be deprecated in the future,
+     as it is undesirable for the protocol to rely on a multisig. This was 
+     introduced as an intermediate solution between having and not having an
+     Emergency pause that bypasses the DAO vote.
 """
 
-
-event Sealed:
-    gate_seal: address
-    sealed_by: address
-    sealed_for: uint256
-    sealable: address
-    sealed_at: uint256
-
-event ProlongationUsed:
-    gate_seal: address
-    new_expiry: uint256
-    prolongations_remaining: uint256
-
-interface IPausableUntil:
+interface IPausable:
     def pauseFor(_duration: uint256): nonpayable
     def isPaused() -> bool: view
 
-SECONDS_PER_DAY: constant(uint256) = 60 * 60 * 24
-
-# The maximum GateSeal expiry duration is 3 years.
-MAX_EXPIRY_PERIOD_DAYS: constant(uint256) = 365 * 3
-MAX_EXPIRY_PERIOD_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_EXPIRY_PERIOD_DAYS
-
-# The minimum allowed seal duration is 6 days. This is because it takes at least
-# 5 days to pass and enact (3 days main phase, 2 days objection phase).
-# Additionally, we want to include a 1-day padding.
-MIN_SEAL_DURATION_DAYS: constant(uint256) = 6
-MIN_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MIN_SEAL_DURATION_DAYS
-
-# The maximum allowed seal duration is 21 days.
-# Anything higher than that may be too long of a disruption for the protocol.
-# Keep in mind, that the DAO still retains the ability to resume the contracts
-# (or, in the GateSeal terms, "break the seal") prematurely.
-MAX_SEAL_DURATION_DAYS: constant(uint256) = 21
-MAX_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_SEAL_DURATION_DAYS
-
-# The maximum number of sealables is 8.
-# GateSeals were originally designed to pause WithdrawalQueue and ValidatorExitBus,
-# however, there is a non-zero chance that there might be more in the future, which
-# is why we've opted to use a dynamic-size array.
 MAX_SEALABLES: constant(uint256) = 8
 
-# Maximum number of prolongations allowed
-MAX_PROLONGATIONS: constant(uint256) = 5
+# New constants for the updated logic
+MIN_INITIAL_LIFETIME_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
+MAX_INITIAL_LIFETIME_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
+MAX_EXTENSIONS: constant(uint256) = 5
+MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
+MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
+MIN_SEAL_DURATION_SECONDS: constant(uint256) = 6 * 24 * 60 * 60  # 6 days
+MAX_SEAL_DURATION_SECONDS: constant(uint256) = 21 * 24 * 60 * 60  # 21 days
 
-# Maximum duration of a single prolongation is 6 months
-MAX_PROLONGATION_DURATION_DAYS: constant(uint256) = 180
-MAX_PROLONGATION_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_PROLONGATION_DURATION_DAYS
+event Sealed:
+    sealed_by: indexed(address)
+    sealables: DynArray[address, MAX_SEALABLES]
+    sealed_for: uint256
 
-# To simplify the code, we chose not to implement committees in GateSeals.
-# Instead, GateSeals are operated by a single account which must be a multisig.
-# The code does not perform any such checks but we ensure that
-# the sealing committee will always be a multisig. 
-SEALING_COMMITTEE: immutable(address)
+event LifetimeExtended:
+    extended_by: indexed(address)
+    old_expiry: uint256
+    new_expiry: uint256
+    extensions_remaining: uint256
 
-# The duration of the seal in seconds. This period cannot exceed 21 days.
-# The DAO may decide to resume the contracts prematurely via the DAO voting process.
-SEAL_DURATION_SECONDS: immutable(uint256)
+event Expired:
+    pass
 
-# The sealing committee extends the GateSeal to attest that the multisig is still active.
+# sealing committee that has the power to seal and extend lifetime
+sealing_committee: public(address)
 
-# The duration of the prolongation in seconds.
-PROLONGATION_DURATION_SECONDS: immutable(uint256)
+# the sealables that can be sealed
+sealables: public(DynArray[address, MAX_SEALABLES])
 
-# The addresses of pausable contracts. The gate seal must have the permission to
-# pause these contracts at the time of the sealing.
-# Sealing can be partial, meaning the committee may decide to pause only a subset of this list,
-# though GateSeal will still expire immediately.
-sealables: DynArray[address, MAX_SEALABLES]
+# the duration for which the sealables will be paused
+seal_duration_seconds: public(uint256)
 
-# A unix epoch timestamp starting from which GateSeal is completely unusable
-# and a new GateSeal will have to be set up. This timestamp will be changed
-# upon sealing to expire GateSeal immediately which will revert any consecutive sealings.
-expiry_timestamp: uint256
+# GateSeal lifetime parameters
+initial_lifetime_seconds: public(uint256)  # Duration of initial period and each extension
+expiry_timestamp: public(uint256)          # When the GateSeal expires
+max_extensions: public(uint256)            # Maximum number of extensions allowed
+extensions_used: public(uint256)           # Number of extensions already used
+extension_activation_window_seconds: public(uint256)  # Window before expiry when extensions can be activated
 
-# The number of prolongations remaining.
-prolongations_remaining: uint256
+# whether the seal was used. This is a one-time use contract
+is_used: public(bool)
 
 @deploy
 def __init__(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _expiry_timestamp: uint256,
-    _prolongations: uint256,
-    _prolongation_duration_seconds: uint256
+    _initial_lifetime_seconds: uint256,
+    _max_extensions: uint256,
+    _extension_activation_window_seconds: uint256,
 ):
-    assert _sealing_committee != empty(address), "sealing committee: zero address"
-    assert _seal_duration_seconds >= MIN_SEAL_DURATION_SECONDS, "seal duration: too short"
-    assert _seal_duration_seconds <= MAX_SEAL_DURATION_SECONDS, "seal duration: exceeds max"
-    assert len(_sealables) > 0, "sealables: empty list"
-    assert _expiry_timestamp > block.timestamp, "expiry timestamp: must be in the future"
-    assert _expiry_timestamp <= block.timestamp + MAX_EXPIRY_PERIOD_SECONDS, "expiry timestamp: exceeds max expiry period"
-    assert _prolongations <= MAX_PROLONGATIONS, "prolongations: exceeds max"
-    assert _prolongations >= 0, "prolongations: must be non-negative"
-    if (_prolongations == 0):
-        assert _prolongation_duration_seconds == 0, "prolongation duration: must be zero"
-    else:
-        assert _prolongation_duration_seconds > 0, "prolongation duration: must be positive"
-        assert _prolongation_duration_seconds <= MAX_PROLONGATION_DURATION_SECONDS, "prolongation duration: exceeds max"
+    """
+    @notice creates a new GateSeal with specified parameters
+    @param _sealing_committee the address that can seal the contracts and extend lifetime
+    @param _seal_duration_seconds the duration for which the sealables will be paused (6-21 days)
+    @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
+    @param _initial_lifetime_seconds the initial lifetime of the GateSeal (1 month - 1 year)
+    @param _max_extensions maximum number of lifetime extensions allowed (0-5)
+    @param _extension_activation_window_seconds time window before expiry when extensions can be activated (1 week - 1 year)
+    """
+    assert _sealing_committee != empty(address), "committee cannot be zero address"
+    assert len(_sealables) >= 1, "must provide at least one sealable"
+    assert len(_sealables) <= MAX_SEALABLES, "too many sealables"
+    assert not self._has_duplicates(_sealables), "duplicate sealables"
+    
+    # Validate seal duration
+    assert _seal_duration_seconds >= MIN_SEAL_DURATION_SECONDS, "seal duration too short"
+    assert _seal_duration_seconds <= MAX_SEAL_DURATION_SECONDS, "seal duration too long"
+    
+    # Validate initial lifetime
+    assert _initial_lifetime_seconds >= MIN_INITIAL_LIFETIME_SECONDS, "initial lifetime too short"
+    assert _initial_lifetime_seconds <= MAX_INITIAL_LIFETIME_SECONDS, "initial lifetime too long"
+    
+    # Validate extensions
+    assert _max_extensions <= MAX_EXTENSIONS, "too many extensions"
+    
+    # Validate extension activation window
+    assert _extension_activation_window_seconds >= MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS, "activation window too short"
+    assert _extension_activation_window_seconds <= MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS, "activation window too long"
+    assert _extension_activation_window_seconds <= _initial_lifetime_seconds, "activation window cannot exceed lifetime"
 
-    for sealable: address in _sealables:
-        assert sealable != empty(address), "sealables: includes zero address"
-    assert not self._has_duplicates(_sealables), "sealables: includes duplicates"
-
-    SEALING_COMMITTEE = _sealing_committee
-    SEAL_DURATION_SECONDS = _seal_duration_seconds
-    PROLONGATION_DURATION_SECONDS = _prolongation_duration_seconds
+    self.sealing_committee = _sealing_committee
+    self.seal_duration_seconds = _seal_duration_seconds
     self.sealables = _sealables
-    self.expiry_timestamp = _expiry_timestamp
-    self.prolongations_remaining = _prolongations
-
-
-@external
-@view
-def get_sealing_committee() -> address:
-    return SEALING_COMMITTEE
-
-
-@external
-@view
-def get_seal_duration_seconds() -> uint256:
-    return SEAL_DURATION_SECONDS
-
-
-@external
-@view
-def get_sealables() -> DynArray[address, MAX_SEALABLES]:
-    return self.sealables
-
-
-@external
-@view
-def get_expiry_timestamp() -> uint256:
-    return self.expiry_timestamp
-
-
-@external
-@view
-def get_prolongation_duration_seconds() -> uint256:
-    return PROLONGATION_DURATION_SECONDS
-
-
-@external
-@view
-def get_prolongations_remaining() -> uint256:
-    return self.prolongations_remaining
-
-
-@external
-@view
-def is_expired() -> bool:
-    return self._is_expired()
-
-
-@external
-@view
-def get_time_until_expiry() -> uint256:
-    """
-    @notice Get time remaining until expiry
-    @return Time in seconds until expiry, 0 if already expired
-    """
-    if self._is_expired():
-        return 0
-    return self.expiry_timestamp - block.timestamp
-
-
-@external
-@view
-def can_prolong() -> bool:
-    """
-    @notice Check if GateSeal can be prolonged
-    @return True if can be prolonged, False otherwise
-    """
-    return (not self._is_expired() and 
-            self.prolongations_remaining > 0)
-
-
-@external
-def prolong():
-    """
-    @notice Prolong the GateSeal.
-    @dev    Can be called only by the sealing committee while the seal hasn't been used and not expired.
-    """
-    assert msg.sender == SEALING_COMMITTEE, "sender: not SEALING_COMMITTEE"
-    assert not self._is_expired(), "gate seal: expired"
-    assert self.prolongations_remaining > 0, "prolongations: exhausted"
-
-    # Protection against timestamp overflow
-    new_expiry: uint256 = self.expiry_timestamp + PROLONGATION_DURATION_SECONDS
-    assert new_expiry > self.expiry_timestamp, "expiry: overflow"
-
-    self.expiry_timestamp = new_expiry
-    self.prolongations_remaining -= 1
-
-    log ProlongationUsed(
-        gate_seal=self,
-        new_expiry=new_expiry,
-        prolongations_remaining=self.prolongations_remaining
-    )
-
+    self.initial_lifetime_seconds = _initial_lifetime_seconds
+    self.expiry_timestamp = block.timestamp + _initial_lifetime_seconds
+    self.max_extensions = _max_extensions
+    self.extensions_used = 0
+    self.extension_activation_window_seconds = _extension_activation_window_seconds
+    self.is_used = False
 
 @external
 def seal(_sealables: DynArray[address, MAX_SEALABLES]):
     """
-    @notice Seal the contract(s).
-    @dev    Immediately expires GateSeal and, thus, can only be called once.
-    @param _sealables a list of sealables to seal; may include all or only a subset.
+    @notice pauses the contracts for the specified seal duration
+    @param _sealables a subset of sealables passed to the constructor.
+                     can pause multiple contracts in the same call 
+    @dev this function can be used only once and only by sealing committee
     """
-    assert msg.sender == SEALING_COMMITTEE, "sender: not SEALING_COMMITTEE"
-    assert not self._is_expired(), "gate seal: expired"
-    assert len(_sealables) > 0, "sealables: empty subset"
-    assert not self._has_duplicates(_sealables), "sealables: includes duplicates"
+    assert msg.sender == self.sealing_committee, "unauthorized caller"
+    assert block.timestamp < self.expiry_timestamp, "gate seal expired"
+    assert not self.is_used, "gate seal already used"
+    assert len(_sealables) > 0, "must provide sealables"
 
-    self._expire_immediately()
-
-    # Instead of reverting the transaction as soon as one of the sealables fails,
-    # we iterate through the entire list and collect the indexes of those that failed
-    # and report them in the dynamically-generated error message.
-    # This will make it easier for us to debug in a hectic situation.
-    failed_indexes: DynArray[uint256, MAX_SEALABLES] = []
-    sealable_index: uint256 = 0
-
+    # Verify all provided sealables are in the allowed list
     for sealable: address in _sealables:
-        assert sealable in self.sealables, "sealables: includes a non-sealable"
+        assert sealable in self.sealables, "sealable not in list"
 
-        # Check pause state before attempting to pause
+    self.is_used = True
+    failed_sealables: DynArray[uint256, MAX_SEALABLES] = []
+
+    for i: uint256 in range(MAX_SEALABLES):
+        if i >= len(_sealables):
+            break
+        
+        sealable: address = _sealables[i]
+        
+        # Check current pause state before attempting to pause
         was_paused: bool = False
-        was_paused_success: bool = False
-        was_paused_response: Bytes[32] = b""
+        pause_call_success: bool = False
         
-        was_paused_success, was_paused_response = raw_call(
+        # Get current pause state (with safety fallback)
+        pause_check_success: bool = False
+        pause_response: Bytes[32] = b""
+        pause_check_success, pause_response = raw_call(
             sealable,
-            abi_encode(method_id("isPaused()")),
+            method_id("isPaused()"),
             max_outsize=32,
-            revert_on_failure=False
+            revert_on_failure=False,
+            is_static_call=True
         )
         
-        if was_paused_success and len(was_paused_response) >= 32:
-            was_paused = convert(was_paused_response, bool)
+        if pause_check_success and len(pause_response) >= 32:
+            was_paused = convert(pause_response, bool)
+        
+        # Attempt to pause the contract
+        pause_success: bool = False
+        pause_call_response: Bytes[32] = b""
+        pause_success, pause_call_response = raw_call(
+            sealable, 
+            concat(method_id("pauseFor(uint256)"), convert(self.seal_duration_seconds, bytes32)),
+            revert_on_failure=False
+        )
+        pause_call_success = pause_success
+        
+        # Verify successful sealing: pause call succeeded AND (contract became paused OR was already paused)
+        is_now_paused: bool = False
+        final_check_success: bool = False
+        final_response: Bytes[32] = b""
+        final_check_success, final_response = raw_call(
+            sealable,
+            method_id("isPaused()"),
+            max_outsize=32,
+            revert_on_failure=False,
+            is_static_call=True
+        )
+        
+        if final_check_success and len(final_response) >= 32:
+            is_now_paused = convert(final_response, bool)
+        
+        # Operation is successful if: pause call succeeded AND (now paused OR was already paused)
+        sealing_successful: bool = pause_call_success and (is_now_paused or was_paused)
+        
+        if not sealing_successful:
+            failed_sealables.append(i)
 
-        success: bool = False
-        response: Bytes[32] = b""
+    # Revert if any sealable failed to seal properly
+    if len(failed_sealables) > 0:
+        raise self._to_error_string(failed_sealables)
 
-        # using `raw_call` to catch external revert and continue execution
-        # capturing `response` to keep the compiler from acting out but will not be checking it
-        # as different sealables may return different values if anything at all
-        # for details, see https://docs.vyperlang.org/en/stable/built-in-functions.html#raw_call
-        success, response = raw_call(
-            sealable,
-            abi_encode(SEAL_DURATION_SECONDS, method_id=method_id("pauseFor(uint256)")),
-            max_outsize=32,
-            revert_on_failure=False
-        )
-        
-        # Check pause state after attempting to pause
-        is_paused_after: bool = False
-        is_paused_success: bool = False
-        is_paused_response: Bytes[32] = b""
-        
-        is_paused_success, is_paused_response = raw_call(
-            sealable,
-            abi_encode(method_id("isPaused()")),
-            max_outsize=32,
-            revert_on_failure=False
-        )
-        
-        if is_paused_success and len(is_paused_response) >= 32:
-            is_paused_after = convert(is_paused_response, bool)
-        
-        # Consider successful if pauseFor() succeeded AND (contract became paused OR was already paused)
-        if success and (is_paused_after or was_paused):
-            log Sealed(
-                gate_seal=self,
-                sealed_by=SEALING_COMMITTEE,
-                sealed_for=SEAL_DURATION_SECONDS,
-                sealable=sealable,
-                sealed_at=block.timestamp
-            )
-        else:
-            failed_indexes.append(sealable_index)
+    log Sealed(sealed_by=msg.sender, sealables=_sealables, sealed_for=self.seal_duration_seconds)
+
+@external
+def extendLifetime():
+    """
+    @notice extends the GateSeal lifetime by the initial lifetime duration
+    @dev can only be called by sealing committee, within the activation window,
+         and only if extensions are remaining
+    """
+    assert msg.sender == self.sealing_committee, "unauthorized caller"
+    assert self.extensions_used < self.max_extensions, "no extensions remaining"
     
-        sealable_index += 1
+    # Check if we're within the extension activation window
+    time_until_expiry: uint256 = 0
+    if block.timestamp < self.expiry_timestamp:
+        time_until_expiry = self.expiry_timestamp - block.timestamp
+    
+    assert time_until_expiry <= self.extension_activation_window_seconds, "outside activation window"
+    assert time_until_expiry > 0, "gate seal expired"
+    
+    old_expiry: uint256 = self.expiry_timestamp
+    
+    # Overflow protection: check if addition would overflow
+    assert old_expiry <= max_value(uint256) - self.initial_lifetime_seconds, "timestamp overflow"
+    
+    self.expiry_timestamp = old_expiry + self.initial_lifetime_seconds
+    self.extensions_used += 1
+    
+    log LifetimeExtended(
+        extended_by=msg.sender, 
+        old_expiry=old_expiry, 
+        new_expiry=self.expiry_timestamp, 
+        extensions_remaining=self.max_extensions - self.extensions_used
+    )
 
-    assert len(failed_indexes) == 0, self._to_error_string(failed_indexes)
+@external
+@view
+def get_seal_info() -> (
+    address,  # sealing_committee
+    uint256,  # seal_duration_seconds
+    DynArray[address, MAX_SEALABLES],  # sealables
+    uint256,  # initial_lifetime_seconds
+    uint256,  # expiry_timestamp
+    uint256,  # max_extensions
+    uint256,  # extensions_used
+    uint256,  # extension_activation_window_seconds
+    bool      # is_used
+):
+    """
+    @notice returns all the seal configuration and state information
+    """
+    return (
+        self.sealing_committee,
+        self.seal_duration_seconds,
+        self.sealables,
+        self.initial_lifetime_seconds,
+        self.expiry_timestamp,
+        self.max_extensions,
+        self.extensions_used,
+        self.extension_activation_window_seconds,
+        self.is_used
+    )
 
+@external 
+@view
+def can_extend_lifetime() -> bool:
+    """
+    @notice checks if the GateSeal lifetime can be extended right now
+    @return true if extension is possible, false otherwise
+    """
+    if self.extensions_used >= self.max_extensions:
+        return False
+    
+    if block.timestamp >= self.expiry_timestamp:
+        return False
+        
+    time_until_expiry: uint256 = self.expiry_timestamp - block.timestamp
+    return time_until_expiry <= self.extension_activation_window_seconds
+
+@external
+@view
+def is_expired() -> bool:
+    """
+    @notice checks if the GateSeal is expired
+    @return true if expired, false otherwise
+    """
+    return block.timestamp >= self.expiry_timestamp
 
 @internal
 @view
-def _is_expired() -> bool:
-    return block.timestamp >= self.expiry_timestamp
-
-
-@internal
-def _expire_immediately():
-    self.expiry_timestamp = block.timestamp
-    self.prolongations_remaining = 0
-
-
-@internal
-@pure
 def _has_duplicates(_sealables: DynArray[address, MAX_SEALABLES]) -> bool:
     """
-    @notice checks the list for duplicates 
-    @param  _sealables list of addresses to check
+    @notice checks if there are duplicate addresses in sealables list
+    @param _sealables the list of sealable addresses to check
+    @return true if duplicates found, false otherwise
     """
-    unique: DynArray[address, MAX_SEALABLES] = []
-
-    for sealable: address in _sealables:
-        if sealable in unique:
-            return True
-        unique.append(sealable)
-
+    for i: uint256 in range(MAX_SEALABLES):
+        if i >= len(_sealables):
+            break
+        for j: uint256 in range(MAX_SEALABLES):
+            if j >= len(_sealables) or j <= i:
+                continue
+            if _sealables[i] == _sealables[j]:
+                return True
     return False
-
 
 @internal
 @pure

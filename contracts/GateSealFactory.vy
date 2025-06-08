@@ -13,6 +13,9 @@
      The blueprint must follow EIP-5202 and, thus, is not a
      functioning GateSeal itself but only its deployment code.
 
+     Updated to support new GateSeal logic with initial lifetime,
+     extensions, and activation windows.
+
      More on blueprints
      https://docs.vyperlang.org/en/v0.4.1/built-in-functions.html#chain-interaction
 
@@ -23,46 +26,86 @@
 event GateSealCreated:
     gate_seal: address
 
+# Constants matching GateSeal contract
+MAX_SEALABLES: constant(uint256) = 8
+MIN_INITIAL_LIFETIME_SECONDS: constant(uint256) = 30 * 24 * 60 * 60  # 1 month
+MAX_INITIAL_LIFETIME_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
+MAX_EXTENSIONS: constant(uint256) = 5
+MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 7 * 24 * 60 * 60    # 1 week
+MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS: constant(uint256) = 365 * 24 * 60 * 60  # 1 year
+MIN_SEAL_DURATION_SECONDS: constant(uint256) = 6 * 24 * 60 * 60  # 6 days
+MAX_SEAL_DURATION_SECONDS: constant(uint256) = 21 * 24 * 60 * 60  # 21 days
 
 # First 3 bytes of the blueprint are the EIP-5202 header;
-# The actual code of the contract starts at 4th byte
-EIP5202_CODE_OFFSET: constant(uint256) = 3
-
-# The maximum number of sealables is 8.
-# GateSeals were originally designed to pause WithdrawalQueue and ValidatorExitBus,
-# however, there is a non-zero chance that there might be more in the future, which
-# is why we've opted to use a dynamic-size array.
-MAX_SEALABLES: constant(uint256) = 8
-
-# Constants from GateSeal for validation
-SECONDS_PER_DAY: constant(uint256) = 60 * 60 * 24
-MIN_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * 6
-MAX_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * 21
-MAX_EXPIRY_PERIOD_SECONDS: constant(uint256) = SECONDS_PER_DAY * 365 * 3
-MAX_PROLONGATIONS: constant(uint256) = 5
-MAX_PROLONGATION_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * 180
-
-# Address of the blueprint that must be deployed beforehand
+# The actual code of the contract starts at 4th byte.
+# https://eips.ethereum.org/EIPS/eip-5202
+BLUEPRINT_HEADER_SIZE: constant(uint256) = 3
 BLUEPRINT: immutable(address)
-
-# @dev Error messages
-BLUEPRINT_ZERO_ADDRESS: constant(String[32]) = "blueprint: zero address"
 
 @deploy
 def __init__(_blueprint: address):
     """
-    @notice Initialize the factory with a blueprint contract
-    @param _blueprint The address of the blueprint contract
+    @notice initializes the factory with the GateSeal blueprint
+    @param _blueprint the address of the GateSeal blueprint
     """
-    assert _blueprint != empty(address), BLUEPRINT_ZERO_ADDRESS
+    assert _blueprint != empty(address), "blueprint: zero address"
+    
+    # Ensure blueprint has valid EIP-5202 header
+    header: Bytes[3] = slice(_blueprint.code, 0, BLUEPRINT_HEADER_SIZE)
+    assert len(header) == BLUEPRINT_HEADER_SIZE, "blueprint: invalid length"
+    expected_header: Bytes[3] = b"\xFE\x71\x00"
+    assert header == expected_header, "blueprint: invalid EIP-5202 header"
+    
     BLUEPRINT = _blueprint
 
-
 @external
-@view
-def get_blueprint() -> address:
-    return BLUEPRINT
-
+def create_gate_seal(
+    _sealing_committee: address,
+    _seal_duration_seconds: uint256,
+    _sealables: DynArray[address, MAX_SEALABLES],
+    _initial_lifetime_seconds: uint256,
+    _max_extensions: uint256,
+    _extension_activation_window_seconds: uint256,
+) -> address:
+    """
+    @notice creates a new GateSeal with the specified parameters
+    @param _sealing_committee the address that can seal the contracts and extend lifetime
+    @param _seal_duration_seconds the duration for which the sealables will be paused (6-21 days)
+    @param _sealables the addresses of the contracts that can be sealed (1-8 contracts)
+    @param _initial_lifetime_seconds the initial lifetime of the GateSeal (1 month - 1 year)
+    @param _max_extensions maximum number of lifetime extensions allowed (0-5)
+    @param _extension_activation_window_seconds time window before expiry when extensions can be activated (1 week - 1 year)
+    @return the address of the newly created GateSeal
+    """
+    # Pre-validate all parameters to provide clear error messages
+    assert self._validate_gate_seal_params(
+        _sealing_committee,
+        _seal_duration_seconds,
+        _sealables,
+        _initial_lifetime_seconds,
+        _max_extensions,
+        _extension_activation_window_seconds
+    ), "invalid parameters"
+    
+    gate_seal: address = create_from_blueprint(
+        BLUEPRINT,
+        _sealing_committee,
+        _seal_duration_seconds,
+        _sealables,
+        _initial_lifetime_seconds,
+        _max_extensions,
+        _extension_activation_window_seconds,
+        salt=keccak256(
+            concat(
+                convert(_sealing_committee, bytes32),
+                convert(_seal_duration_seconds, bytes32),
+                convert(block.timestamp, bytes32)
+            )
+        )
+    )
+    
+    log GateSealCreated(gate_seal=gate_seal)
+    return gate_seal
 
 @external
 @view
@@ -70,94 +113,97 @@ def validate_gate_seal_params(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _expiry_timestamp: uint256,
-    _prolongations: uint256,
-    _prolongation_duration_seconds: uint256
+    _initial_lifetime_seconds: uint256,
+    _max_extensions: uint256,
+    _extension_activation_window_seconds: uint256,
 ) -> bool:
     """
-    @notice Validate GateSeal parameters before deployment
-    @dev This function performs the same validation as GateSeal constructor
-    @return True if all parameters are valid
+    @notice validates GateSeal parameters before deployment (external view)
+    @dev performs the same validations as GateSeal constructor
+    @return true if all parameters are valid, false otherwise
     """
-    # Validate sealing committee
-    if _sealing_committee == empty(address):
-        return False
-        
-    # Validate seal duration
-    if _seal_duration_seconds < MIN_SEAL_DURATION_SECONDS:
-        return False
-    if _seal_duration_seconds > MAX_SEAL_DURATION_SECONDS:
-        return False
-        
-    # Validate sealables
-    if len(_sealables) == 0:
-        return False
-    if len(_sealables) > MAX_SEALABLES:
-        return False
-        
-    # Check for zero addresses and duplicates in sealables
-    for sealable: address in _sealables:
-        if sealable == empty(address):
-            return False
-            
-    # Check for duplicates
-    unique: DynArray[address, MAX_SEALABLES] = []
-    for sealable: address in _sealables:
-        if sealable in unique:
-            return False
-        unique.append(sealable)
-        
-    # Validate expiry timestamp
-    if _expiry_timestamp <= block.timestamp:
-        return False
-    if _expiry_timestamp > block.timestamp + MAX_EXPIRY_PERIOD_SECONDS:
-        return False
-        
-    # Validate prolongations
-    if _prolongations > MAX_PROLONGATIONS:
-        return False
-        
-    # Validate prolongation duration
-    if _prolongations == 0:
-        if _prolongation_duration_seconds != 0:
-            return False
-    else:
-        if _prolongation_duration_seconds == 0:
-            return False
-        if _prolongation_duration_seconds > MAX_PROLONGATION_DURATION_SECONDS:
-            return False
-            
-    return True
-
-
-@external
-def create_gate_seal(
-    _sealing_committee: address,
-    _seal_duration_seconds: uint256,
-    _sealables: DynArray[address, MAX_SEALABLES],
-    _expiry_timestamp: uint256,
-    _prolongations: uint256,
-    _prolongation_duration_seconds: uint256
-):
-    """
-    @notice Create a new GateSeal.
-    @dev    All of the security checks are done inside the GateSeal constructor.
-    @param _sealing_committee address of the multisig committee
-    @param _seal_duration_seconds duration of the seal in seconds
-    @param _sealables addresses of pausable contracts
-    @param _expiry_timestamp unix timestamp when the GateSeal will naturally expire
-    @param _prolongations number of prolongations
-    @param _prolongation_duration_seconds duration of the prolongation in seconds
-    """
-    gate_seal: address = create_from_blueprint(
-        BLUEPRINT,
+    return self._validate_gate_seal_params(
         _sealing_committee,
         _seal_duration_seconds,
         _sealables,
-        _expiry_timestamp,
-        _prolongations,
-        _prolongation_duration_seconds,
-        code_offset=EIP5202_CODE_OFFSET,
+        _initial_lifetime_seconds,
+        _max_extensions,
+        _extension_activation_window_seconds
     )
 
-    log GateSealCreated(gate_seal=gate_seal)
+@internal
+@view
+def _validate_gate_seal_params(
+    _sealing_committee: address,
+    _seal_duration_seconds: uint256,
+    _sealables: DynArray[address, MAX_SEALABLES],
+    _initial_lifetime_seconds: uint256,
+    _max_extensions: uint256,
+    _extension_activation_window_seconds: uint256,
+) -> bool:
+    """
+    @notice validates GateSeal parameters before deployment (internal)
+    @dev performs the same validations as GateSeal constructor
+    @return true if all parameters are valid, false otherwise
+    """
+    # Basic validations
+    if _sealing_committee == empty(address):
+        return False
+    if len(_sealables) < 1 or len(_sealables) > MAX_SEALABLES:
+        return False
+    if self._has_duplicates(_sealables):
+        return False
+    
+    # Validate seal duration
+    if _seal_duration_seconds < MIN_SEAL_DURATION_SECONDS or _seal_duration_seconds > MAX_SEAL_DURATION_SECONDS:
+        return False
+    
+    # Validate initial lifetime
+    if _initial_lifetime_seconds < MIN_INITIAL_LIFETIME_SECONDS or _initial_lifetime_seconds > MAX_INITIAL_LIFETIME_SECONDS:
+        return False
+    
+    # Validate extensions
+    if _max_extensions > MAX_EXTENSIONS:
+        return False
+    
+    # Validate extension activation window
+    if _extension_activation_window_seconds < MIN_EXTENSION_ACTIVATION_WINDOW_SECONDS:
+        return False
+    if _extension_activation_window_seconds > MAX_EXTENSION_ACTIVATION_WINDOW_SECONDS:
+        return False
+    if _extension_activation_window_seconds > _initial_lifetime_seconds:
+        return False
+    
+    # Check for zero addresses in sealables
+    for sealable: address in _sealables:
+        if sealable == empty(address):
+            return False
+    
+    return True
+
+@external
+@view
+def get_blueprint() -> address:
+    """
+    @notice returns the blueprint address
+    @return the address of the GateSeal blueprint
+    """
+    return BLUEPRINT
+
+@internal
+@view
+def _has_duplicates(_sealables: DynArray[address, MAX_SEALABLES]) -> bool:
+    """
+    @notice checks if there are duplicate addresses in sealables list
+    @param _sealables the list of sealable addresses to check
+    @return true if duplicates found, false otherwise
+    """
+    for i: uint256 in range(MAX_SEALABLES):
+        if i >= len(_sealables):
+            break
+        for j: uint256 in range(MAX_SEALABLES):
+            if j >= len(_sealables) or j <= i:
+                continue
+            if _sealables[i] == _sealables[j]:
+                return True
+    return False

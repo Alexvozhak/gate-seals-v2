@@ -1,153 +1,188 @@
-# GateSeal ⛩️
+# GateSeal
 
-A one-time panic button for pausable contracts.
+GateSeal is a one-time emergency pause mechanism designed for Lido protocol's pausable contracts. It serves as an intermediate solution that allows a multisig committee to pause critical contracts immediately, bypassing the DAO vote process during emergencies.
 
-![](/assets/monty-python.png)
+## Overview
 
-## What is a GateSeal?
+GateSeal acts as a panic button that can pause one or more contracts for a specified duration (6-21 days). This gives the DAO time to analyze the situation, decide on appropriate actions, hold votes, and implement fixes.
 
-A GateSeal is a contract that allows the designated account to instantly put a set of contracts on pause (i.e. seal) for a limited duration. GateSeals are meant to be used as a panic button for crucial contracts in case of an emergency. Each GateSeal is one-time use only and immediately becomes unusable once activated. If the seal is never triggered, the GateSeal will still eventually expire after a set period.
+### Key Features
 
-## Why use a GateSeal?
+- **One-time use**: Each GateSeal can only be used once
+- **Initial lifetime**: GateSeals have an initial lifetime (1 month to 1 year)
+- **Lifetime extensions**: Can be extended up to 5 times, each extension equals the initial lifetime duration
+- **Extension activation window**: Extensions can only be activated within a specified time window (1 week to 1 year) before expiry
+- **Multiple targets**: Can pause up to 8 contracts simultaneously
+- **Emergency response**: Provides immediate pause capability without waiting for DAO votes
 
-To put such crucial components of the Lido protocol as `WithdrawalQueue` and `ValidatorExitBus` on hold, the DAO must hold a vote which may take up to several days to pass. GateSeals provide a way to temporarily pause these contracts immediately if the emergency calls for a swifter response. This will give the Lido DAO the time to come up with a solution, hold a vote, implement changes, etc.
+## Architecture
 
-Each GateSeal is operated by a committee, essentially a multisig account responsible for pulling the break in case things go awry. However, authorizing a committee to pause/resume the protocol withdrawals would be utterly reckless which is why GateSeals have a number of safeguards in place:
-- each GateSeal can only be activated only once and becomes unusable immediately after,
-- each GateSeal can only be activated within its expiry period of 1 year maximum and becomes unusable past its expiry timestamp even if it was never triggered,
-- the pause duration set at costruction time is limited to 14 days.
+### GateSeal Contract
 
-Thus, the biggest damage a compromised GateSeal multisig can inflict is to pause withdrawals for 14 days, given the DAO does not resume withdrawals sooner via the governance voting.
+The main contract that handles the sealing (pausing) logic:
 
-With all that said, it still is undesireable for a decentralized protocol to rely on a multisig in any capacity. Which is why GateSeals are only a temporary solution; their limited lifespan and one-time use design also act as a kind of "inconvenience bomb", in that once expired, the GateSeal must be replaced and setup anew.
+- **Committee-controlled**: Only the designated multisig committee can seal contracts or extend lifetime
+- **Time-constrained**: Has an expiry timestamp and controlled extension mechanism
+- **Flexible targeting**: Can seal a subset of configured pausable contracts
 
-## How does it work?
+### GateSealFactory Contract
 
-The idea of GateSeals is heavily based around [PausableUntil](/contracts/test_helpers/SealableMock.vy) contracts which both `WithdrawalQueue` and `ValidatorExitBus` implement. These PausableUntil contracts are similar to [Pausable](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/release-v4.4/contracts/security/Pausable.sol) contracts with one important difference: the paused state is not merely a boolean value, but a timestamp from which the contract is resumed (or unpaused). This allows the user to pause the contract for a certain period, and after this period the contract will resume itself without an explicit call. Thus, the PausableUntil pattern in conjunction with a GateSeal provide a way to pull the break on the protocol in a critical situation.
+A factory contract that simplifies GateSeal deployment using EIP-5202 blueprints:
 
-A GateSeal is set up with an immutable configuration at the time of construction:
-- the sealing committee, an account responsible for triggering the seal,
-- the seal duration, a period for which the contracts will be sealed,
-- the sealables, a list of contracts to be sealed,
-- the expiry period, a period after which the GateSeal becomes unusable. 
+- **Blueprint-based**: Uses pre-deployed blueprint for efficient contract creation
+- **Parameter validation**: Validates all parameters before deployment
+- **Deterministic addresses**: Uses CREATE2 for predictable contract addresses
 
-Important to note, that GateSeals do not bypass the access control settings for pausable contracts, which is why GateSeals must be given the appropriate permissions beforehand. If and when an emergency arises, the sealing committee simply calls the seal function and puts the contracts on pause for the set duration. 
+## Parameters
 
-## How are GateSeals created?
+### Constructor Parameters
 
-GateSeals are created using the GateSealFactory. The factory uses the blueprint pattern whereby new GateSeals are deployed using the initcode (blueprint) stored onchain. The blueprint is essentially a broken GateSeal that can only be used to create new GateSeals.
+1. **Sealing Committee** (`address`): The multisig address authorized to seal contracts and extend lifetime
+2. **Seal Duration** (`uint256`): How long contracts remain paused when sealed (6-21 days)
+3. **Sealables** (`address[]`): List of pausable contracts (1-8 contracts)
+4. **Initial Lifetime** (`uint256`): Initial validity period of the GateSeal (1 month - 1 year)
+5. **Max Extensions** (`uint256`): Maximum number of lifetime extensions allowed (0-5)
+6. **Extension Activation Window** (`uint256`): Time before expiry when extensions can be activated (1 week - 1 year)
 
-While Vyper offers other ways to create new contracts, we opted to use the blueprint pattern because it creates a fully autonomous contract without any dependencies. Unlike other contract-creating functions, [`create_from_blueprint`](https://docs.vyperlang.org/en/stable/built-in-functions.html#chain-interaction) invokes the constructor of the contract, thus, helping avoid the initilization shenanigans.
+### Constraints
 
-The blueprint follows the [EIP-5202](https://eips.ethereum.org/EIPS/eip-5202) format, which includes a header that makes the contract uncallable and specifies the version. 
+- **Seal Duration**: 6-21 days (518,400 - 1,814,400 seconds)
+- **Initial Lifetime**: 1 month - 1 year (2,592,000 - 31,536,000 seconds)
+- **Max Extensions**: 0-5 extensions
+- **Extension Activation Window**: 1 week - 1 year, cannot exceed initial lifetime
+- **Sealables**: 1-8 contracts, no duplicates, no zero addresses
 
-## Dependencies
+## Usage
 
-```mermaid
-flowchart LR
-    subgraph ape["ape"]
-        direction LR
+### Deployment
 
-        apeConfig["ape-config.yaml"]
-        vyper["vyper"]
-        infura["infura"]
-        
-        apeConfig --> vyper
-        apeConfig --> infura
-    end
-
-    subgraph yarn["yarn"]
-        direction LR
-        
-        yarnConfig["package.json"]
-        hardhat["hardhat"]
-        
-        yarnConfig --> hardhat
-    end
-
-    subgraph poetry["poetry"]
-        direction LR
-
-        poetryConfig["pyproject.toml"]
-        eth-ape["eth-ape"]
-        ape-hardhat["ape-hardhat"]
-
-        poetryConfig --> eth-ape
-        poetryConfig --> ape-hardhat
-    end  
-
-    GateSeal{"GateSeals\nDependencies"}
-
-    GateSeal --> poetry
-    GateSeal --> ape
-    GateSeal --> yarn
+```solidity
+// Deploy via factory
+address gateSeal = factory.create_gate_seal(
+    sealingCommittee,
+    7 * 24 * 60 * 60,        // 7 days seal duration
+    [contract1, contract2],   // sealable contracts
+    90 * 24 * 60 * 60,       // 90 days initial lifetime
+    3,                       // 3 extensions allowed
+    30 * 24 * 60 * 60        // 30 days activation window
+);
 ```
 
-## Contributing
+### Sealing Contracts
+
+```solidity
+// Seal all configured contracts
+gateSeal.seal([contract1, contract2]);
+
+// Seal subset of contracts
+gateSeal.seal([contract1]);
+```
+
+### Extending Lifetime
+
+```solidity
+// Check if extension is possible
+bool canExtend = gateSeal.can_extend_lifetime();
+
+// Extend lifetime (only within activation window)
+gateSeal.extendLifetime();
+```
+
+### Querying State
+
+```solidity
+// Get all seal information
+(
+    address committee,
+    uint256 sealDuration,
+    address[] memory sealables,
+    uint256 initialLifetime,
+    uint256 expiryTimestamp,
+    uint256 maxExtensions,
+    uint256 extensionsUsed,
+    uint256 activationWindow,
+    bool isUsed
+) = gateSeal.get_seal_info();
+
+// Check expiry status
+bool expired = gateSeal.is_expired();
+```
+
+## Security Considerations
+
+### Trust Assumptions
+
+- **Multisig Security**: The sealing committee multisig must be properly secured
+- **Committee Honesty**: Committee should only use GateSeal in genuine emergencies
+- **Contract Permissions**: GateSeal must have pause permissions on target contracts
+
+### Limitations
+
+- **One-time Use**: Cannot be reused after sealing
+- **Time Constraints**: Limited by expiry timestamp and extension rules
+- **Committee Dependency**: Relies on multisig committee for operation
+
+### Emergency Response
+
+1. **Immediate Action**: Committee can pause contracts instantly during emergencies
+2. **DAO Override**: DAO retains ability to resume contracts before seal duration expires
+3. **Automatic Expiry**: GateSeal becomes unusable after expiry, forcing renewal process
+
+## Development
 
 ### Prerequisites
-This project was developed using these dependencies with their exact versions listed below:
-- Python 3.10
-- Poetry 1.1.13
-- Node.js 16.14.2
-- Yarn 1.22.19
 
-Other versions may work as well but were not tested at all.
+- Python 3.8+
+- [Ape Framework](https://docs.apeworx.io/ape/stable/)
+- [Vyper](https://vyper.readthedocs.io/) 0.4.1+
 
-### Setup
+### Installation
 
-1. Activate poetry virtual environment,
-```shell
-poetry shell
+```bash
+# Install dependencies
+ape plugins install vyper hardhat
+
+# Install Python dependencies
+pip install -r requirements.txt
 ```
 
-2. Install Python dependencies
-```shell
-poetry install
-```
+### Testing
 
-3. Install Node.js modules
-```shell
-yarn
-```
-
-4. Install ape plugins
-```shell
-ape plugins install .
-```
-
-5. (optional) set `MAINNET_RPC_ENDPOINT` environment variable for mainnet forking and deploying
-```shell
-export MAINNET_RPC_ENDPOINT=<your-mainnet-rpc-endpoint>
-```
-
-### Test
-
-By default tests run on the local Hardhat network,
-```shell
+```bash
+# Run all tests
 ape test
+
+# Run specific test file
+ape test tests/test_gate_seal.py
+
+# Run with coverage
+ape test --coverage
 ```
 
-### Deploy
+### Compilation
 
-1. Set the deployer alias;
-```shell
-export DEPLOYER=<your-ape-account-alias>
+```bash
+# Compile contracts
+ape compile
+
+# Compile specific contract
+vyper contracts/GateSeal.vy
 ```
 
-2. Deploy the GateSeal blueprint and GateSealFactory;
-```shell
-ape run scripts/deploy_factory.py
-```
+## Deployment Networks
 
-3. Add the GateSeal configuration to environment variables.
-- `FACTORY` - address of the GateSealFactory deployed in Step 1;
-- `SEALING_COMMITTEE` - address of the sealing committee;
-- `SEAL_DURATION_SECONDS` - duration of the seal in seconds;
-- `SEALABLES` - a comma-separated list of pausable contracts;
-- `EXPIRY_TIMESTAMP` - a unix epoch when GateSeal expires.
+GateSeal has been deployed on:
 
-4. Deploy the GateSeal using the deployed factory
-```shell
-ape run scripts/deploy_gate_seal.py
-```
+- **Mainnet**: Production deployments for Lido protocol
+- **Holesky**: Testnet deployments for testing
+- **Goerli**: Legacy testnet (deprecated)
+
+See `deployed/` directory for specific contract addresses.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Security
+
+For security concerns, please contact the Lido team through appropriate channels. Do not create public issues for security vulnerabilities.
