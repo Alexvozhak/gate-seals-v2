@@ -14,7 +14,7 @@ To put such crucial components of the Lido protocol as `WithdrawalQueue` and `Va
 
 Each GateSeal is operated by a committee, essentially a multisig account responsible for pulling the brake in case things go awry. However, authorizing a committee to pause/resume the protocol withdrawals would be utterly reckless which is why GateSeals have a number of safeguards in place:
 - each GateSeal can only be activated only once and becomes unusable immediately after,
-- the lifetime duration must be between 1 month and 1 year; if the committee fails to prolong in time or runs out of prolongations, the seal becomes unusable,
+- the lifetime duration must be between 6 months and 1 year; if the committee fails to prolong in time or runs out of prolongations, the seal becomes unusable,
 - at deployment the DAO chooses how many prolongations are available and the prolongation window,
 - only the sealing committee may prolong the lifetime, provided that:
   - the GateSeal has not been triggered
