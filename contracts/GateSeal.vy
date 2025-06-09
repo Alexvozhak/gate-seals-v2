@@ -37,15 +37,15 @@ event Sealed:
 
 SECONDS_PER_DAY: constant(uint256) = 60 * 60 * 24
 
-# The lifetime of GateSeal must be between 1 month and 1 year.
-MIN_LIFETIME_DURATION_DAYS: constant(uint256) = 30
+# The lifetime of GateSeal must be between 6 months and 1 year.
+MIN_LIFETIME_DURATION_DAYS: constant(uint256) = 180
 MIN_LIFETIME_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MIN_LIFETIME_DURATION_DAYS
 
 MAX_LIFETIME_DURATION_DAYS: constant(uint256) = 365
 MAX_LIFETIME_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_LIFETIME_DURATION_DAYS
 
 # Prolongation window during which the committee may extend the lifetime.
-MIN_PROLONGATION_WINDOW_DAYS: constant(uint256) = 7
+MIN_PROLONGATION_WINDOW_DAYS: constant(uint256) = 14
 MIN_PROLONGATION_WINDOW_SECONDS: constant(uint256) = SECONDS_PER_DAY * MIN_PROLONGATION_WINDOW_DAYS
 
 MAX_PROLONGATION_WINDOW_DAYS: constant(uint256) = 30
@@ -111,7 +111,7 @@ def __init__(
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
     _lifetime_duration_seconds: uint256,
-    _max_prolongations: uint256,
+    _prolongations: uint256,
     _prolongation_window_seconds: uint256
 ):
     assert _sealing_committee != empty(address), "sealing committee: zero address"
@@ -120,8 +120,8 @@ def __init__(
     assert len(_sealables) > 0, "sealables: empty list"
     assert _lifetime_duration_seconds >= MIN_LIFETIME_DURATION_SECONDS, "lifetime duration: too short"
     assert _lifetime_duration_seconds <= MAX_LIFETIME_DURATION_SECONDS, "lifetime duration: exceeds max"
-    assert _max_prolongations <= MAX_PROLONGATIONS, "max prolongations: exceeds max"
-    assert _max_prolongations >= 0, "max prolongations: must be non-negative"
+    assert _prolongations <= MAX_PROLONGATIONS, "max prolongations: exceeds max"
+    assert _prolongations >= 0, "max prolongations: must be non-negative"
 
     assert _prolongation_window_seconds >= MIN_PROLONGATION_WINDOW_SECONDS, "prolongation window: too short"
     assert _prolongation_window_seconds <= MAX_PROLONGATION_WINDOW_SECONDS, "prolongation window: exceeds max"
@@ -137,7 +137,7 @@ def __init__(
     LIFETIME_DURATION_SECONDS = _lifetime_duration_seconds
     self.sealables = _sealables
     self.expiry_timestamp = block.timestamp + _lifetime_duration_seconds
-    self.prolongations_remaining = _max_prolongations
+    self.prolongations_remaining = _prolongations
 
 
 @external
