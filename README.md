@@ -38,13 +38,15 @@ A GateSeal is set up with an immutable configuration at the time of construction
  - the sealing committee allowed to prolong the lifetime,
 - the number of prolongations available,
 
-Important to note, that GateSeal does not bypass the access control settings for
- pausable contracts, which is why GateSeal must be given the appropriate permissions beforehand. If the seal has not yet been triggered and has not expired, the sealing committee can call `prolongLifetime` to extend the lifetime using one of the remaining prolongations. In an emergency the sealing committee simply calls the `seal` function and puts the contracts on pause for the set duration.
+Important to note, that GateSeal does not bypass the access control settings for pausable contracts, which is why GateSeal must be given the appropriate permissions beforehand. If the seal has not yet been triggered and has not expired, the sealing committee can call `prolongLifetime` to extend the lifetime using one of the remaining prolongations. In an emergency the sealing committee simply calls the `seal` function and puts the contracts on pause for the set duration.
 
+## How are GateSeals created?
 GateSeal is created using the GateSealFactory. The factory uses the blueprint pattern whereby new GateSeal is deployed using the initcode (blueprint) stored onchain. The blueprint is essentially a broken GateSeal that can only be used to create new GateSeal.
 
 The factory's `create_gate_seal` function takes the number of allowed prolongations and the prolongation window alongside the original parameters.
 While Vyper offers other ways to create new contracts, we opted to use the blueprint pattern because it creates a fully autonomous contract without any dependencies. Unlike other contract-creating functions, [`create_from_blueprint`](https://docs.vyperlang.org/en/stable/built-in-functions.html#chain-interaction) invokes the constructor of the contract, thus, helping avoid the initialization shenanigans.
+
+While Vyper offers other ways to create new contracts, we opted to use the blueprint pattern because it creates a fully autonomous contract without any dependencies. Unlike other contract-creating functions, [`create_from_blueprint`](https://docs.vyperlang.org/en/stable/built-in-functions.html#chain-interaction) invokes the constructor of the contract, thus, helping avoid the initilization shenanigans.
 
 The blueprint follows the [EIP-5202](https://eips.ethereum.org/EIPS/eip-5202) format, which includes a header that prevents the contract from being called and specifies the version. 
 
@@ -146,9 +148,9 @@ ape run scripts/deploy_factory.py
 - `FACTORY` - address of the GateSealFactory deployed in Step 1;
 - `SEALING_COMMITTEE` - address of the sealing committee;
 - `SEAL_DURATION_SECONDS` - duration of the seal in seconds;
- - `SEALABLES` - a comma-separated list of pausable contracts;
- - `LIFETIME_DURATION_SECONDS` - initial lifetime duration of the GateSeal;
- - `MAX_PROLONGATIONS` - how many prolongations are allowed;
+- `SEALABLES` - a comma-separated list of pausable contracts;
+- `LIFETIME_DURATION_SECONDS` - lifetime duration of the GateSeal;
+- `MAX_PROLONGATIONS` - how many prolongations are allowed;
 - `PROLONGATION_WINDOW_SECONDS` - how long before expiry the committee may prolong;
 
 4. Deploy the GateSeal using the deployed factory

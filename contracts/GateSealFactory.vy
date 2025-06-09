@@ -11,7 +11,7 @@
      using `create_from_blueprint`.
 
      The blueprint must follow EIP-5202 and, thus, is not a
-     functioning GateSeal itself but only its deployment code.
+     functioning GateSeal itself but only its initcode.
 
      More on blueprints
      https://docs.vyperlang.org/en/v0.4.1/built-in-functions.html#chain-interaction
@@ -37,16 +37,9 @@ MAX_SEALABLES: constant(uint256) = 8
 # Address of the blueprint that must be deployed beforehand
 BLUEPRINT: immutable(address)
 
-# @dev Error messages
-BLUEPRINT_ZERO_ADDRESS: constant(String[32]) = "blueprint: zero address"
-
 @deploy
 def __init__(_blueprint: address):
-    """
-    @notice Initialize the factory with a blueprint contract
-    @param _blueprint The address of the blueprint contract
-    """
-    assert _blueprint != empty(address), BLUEPRINT_ZERO_ADDRESS
+    assert _blueprint != empty(address), "blueprint: zero address"
     BLUEPRINT = _blueprint
 
 

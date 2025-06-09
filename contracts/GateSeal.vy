@@ -23,10 +23,6 @@
      sealables are pausable contracts that implement `pauseFor(duration)` interface.
 """
 
-interface IPausableUntil:
-    def pauseFor(_duration: uint256): nonpayable
-    def isPaused() -> bool: view
-
 
 event Sealed:
     gate_seal: address
@@ -35,7 +31,25 @@ event Sealed:
     sealable: address
     sealed_at: uint256
 
+interface IPausableUntil:
+    def pauseFor(_duration: uint256): nonpayable
+    def isPaused() -> bool: view
+
+
 SECONDS_PER_DAY: constant(uint256) = 60 * 60 * 24
+
+# The minimum allowed seal duration is 6 days. This is because it takes at least
+# 5 days to pass and enact (3 days main phase, 2 days objection phase).
+# Additionally, we want to include a 1-day padding.
+MIN_SEAL_DURATION_DAYS: constant(uint256) = 6
+MIN_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MIN_SEAL_DURATION_DAYS
+
+# The maximum allowed seal duration is 21 days.
+# Anything higher than that may be too long of a disruption for the protocol.
+# Keep in mind, that the DAO still retains the ability to resume the contracts
+# (or, in the GateSeal terms, "break the seal") prematurely.
+MAX_SEAL_DURATION_DAYS: constant(uint256) = 21
+MAX_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_SEAL_DURATION_DAYS
 
 # The lifetime of GateSeal must be between 6 months and 1 year.
 MIN_LIFETIME_DURATION_DAYS: constant(uint256) = 180
@@ -51,19 +65,6 @@ MIN_PROLONGATION_WINDOW_SECONDS: constant(uint256) = SECONDS_PER_DAY * MIN_PROLO
 MAX_PROLONGATION_WINDOW_DAYS: constant(uint256) = 30
 MAX_PROLONGATION_WINDOW_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_PROLONGATION_WINDOW_DAYS
 
-# The minimum allowed seal duration is 6 days. This is because it takes at least
-# 5 days to pass and enact (3 days main phase, 2 days objection phase).
-# Additionally, we want to include a 1-day padding.
-MIN_SEAL_DURATION_DAYS: constant(uint256) = 6
-MIN_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MIN_SEAL_DURATION_DAYS
-
-# The maximum allowed seal duration is 21 days.
-# Anything higher than that may be too long of a disruption for the protocol.
-# Keep in mind, that the DAO still retains the ability to resume the contracts
-# (or, in the GateSeal terms, "break the seal") prematurely.
-MAX_SEAL_DURATION_DAYS: constant(uint256) = 21
-MAX_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_SEAL_DURATION_DAYS
-
 # The maximum number of sealables is 8.
 # GateSeals were originally designed to pause WithdrawalQueue and ValidatorExitBus,
 # however, there is a non-zero chance that there might be more in the future, which
@@ -71,7 +72,7 @@ MAX_SEAL_DURATION_SECONDS: constant(uint256) = SECONDS_PER_DAY * MAX_SEAL_DURATI
 MAX_SEALABLES: constant(uint256) = 8
 
 # Maximum number of prolongations allowed
-MAX_PROLONGATIONS: constant(uint256) = 5
+MAX_PROLONGATIONS: constant(uint256) = 10
 
 # To simplify the code, we chose not to implement committees in GateSeals.
 # Instead, GateSeals are operated by a single account which must be a multisig.

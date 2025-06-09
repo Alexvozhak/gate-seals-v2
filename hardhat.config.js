@@ -1,3 +1,4 @@
+
 // See https://hardhat.org/config/ for config options.
 module.exports = {
   networks: {
@@ -10,7 +11,12 @@ module.exports = {
         path: "m/44'/60'/0'/0",
         count: 10,
         accountsBalance: "10000000000000000000000",
-      }
+      },
+      // uncomment for test_cannot_seal_twice_in_one_tx test
+      // mining: {
+      //   auto: false,
+      //   interval: 1000
+      // }
     },
   },
 };
