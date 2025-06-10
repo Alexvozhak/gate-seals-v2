@@ -26,7 +26,7 @@ def test_committee_cannot_be_zero_address(
     now,
 ):
     with pytest.raises(VirtualMachineError, match="sealing committee: zero address"):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             ZERO_ADDRESS,
             seal_duration_seconds,
             sealables,
@@ -49,7 +49,7 @@ def test_seal_duration_too_short(
     now,
 ):
     with pytest.raises(VirtualMachineError, match="seal duration: too short"):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             MIN_SEAL_DURATION_SECONDS - 1,
             sealables,
@@ -69,7 +69,7 @@ def test_seal_duration_shortest(
     max_prolongations,
     prolongation_window_seconds,
 ):
-    gate_seal = project.GateSeal.deploy(
+    gate_seal = project.GateSealV2.deploy(
         sealing_committee,
         MIN_SEAL_DURATION_SECONDS,
         sealables,
@@ -93,7 +93,7 @@ def test_seal_duration_max(
     max_prolongations,
     prolongation_window_seconds,
 ):
-    gate_seal = project.GateSeal.deploy(
+    gate_seal = project.GateSealV2.deploy(
         sealing_committee,
         MAX_SEAL_DURATION_SECONDS,
         sealables,
@@ -118,7 +118,7 @@ def test_seal_duration_exceeds_max(
     prolongation_window_seconds,
 ):
     with pytest.raises(VirtualMachineError, match="seal duration: exceeds max"):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             MAX_SEAL_DURATION_SECONDS + 1,
             sealables,
@@ -140,7 +140,7 @@ def test_sealables_cannot_be_empty(
     prolongation_window_seconds,
 ):
     with pytest.raises(VirtualMachineError, match="sealables: empty list"):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             [],
@@ -167,7 +167,7 @@ def test_sealables_cannot_include_zero_address(
     sealables[zero_address_index] = ZERO_ADDRESS
 
     with pytest.raises(VirtualMachineError, match="sealables: includes zero address"):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
@@ -194,7 +194,7 @@ def test_sealables_cannot_include_duplicates(
         sealables.append(sealables[0])
 
     with pytest.raises(VirtualMachineError, match="sealables: includes duplicates"):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
@@ -218,7 +218,7 @@ def test_sealables_cannot_exceed_max_length(
     sealables = generate_sealables(MAX_SEALABLES + 1)
 
     with pytest.raises(VirtualMachineError):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
@@ -242,7 +242,7 @@ def test_lifetime_duration_too_short(
     with pytest.raises(
         VirtualMachineError, match="lifetime duration: too short"
     ):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
@@ -267,7 +267,7 @@ def test_lifetime_duration_exceeds_max(
     with pytest.raises(
         VirtualMachineError, match="lifetime duration: exceeds max"
     ):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
@@ -288,7 +288,7 @@ def test_prolongation_window_bounds(
     max_prolongations,
 ):
     with pytest.raises(VirtualMachineError, match="prolongation window: too short"):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
@@ -299,7 +299,7 @@ def test_prolongation_window_bounds(
         )
 
     with pytest.raises(VirtualMachineError, match="prolongation window: exceeds max"):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
@@ -338,7 +338,7 @@ def test_max_prolongations_cannot_exceed_max(
     prolongation_window_seconds,
 ):
     with pytest.raises(VirtualMachineError, match="max prolongations: exceeds max"):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
@@ -358,7 +358,7 @@ def test_max_prolongations_max(
     lifetime_duration_seconds,
     prolongation_window_seconds,
 ):
-    gate_seal = project.GateSeal.deploy(
+    gate_seal = project.GateSealV2.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
@@ -380,7 +380,7 @@ def test_max_prolongations_zero(
     sealables,
     lifetime_duration_seconds,
 ):
-    gate_seal = project.GateSeal.deploy(
+    gate_seal = project.GateSealV2.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
@@ -402,7 +402,7 @@ def test_max_prolongations_zero_allows_nonzero_window(
     sealables,
     lifetime_duration_seconds,
 ):
-    gate_seal = project.GateSeal.deploy(
+    gate_seal = project.GateSealV2.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
@@ -424,7 +424,7 @@ def test_prolongation_window_cannot_exceed_max(
     max_prolongations,
 ):
     with pytest.raises(VirtualMachineError, match="prolongation window: exceeds max"):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
@@ -444,7 +444,7 @@ def test_prolongation_window_max(
     lifetime_duration_seconds,
     max_prolongations,
 ):
-    gate_seal = project.GateSeal.deploy(
+    gate_seal = project.GateSealV2.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
@@ -471,7 +471,7 @@ def test_prolongation_window_must_be_positive(
     with pytest.raises(
         VirtualMachineError, match="prolongation window: too short"
     ):
-        project.GateSeal.deploy(
+        project.GateSealV2.deploy(
             sealing_committee,
             seal_duration_seconds,
             sealables,
@@ -495,7 +495,7 @@ def test_deploy_params_must_match(
     now,
 ):
     expected_timestamp = now() + lifetime_duration_seconds
-    gate_seal = project.GateSeal.deploy(
+    gate_seal = project.GateSealV2.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
@@ -650,7 +650,7 @@ def test_single_failed_sealable_error_message(
     should_revert = not unpausable
     sealables[failing_index] = generate_sealables(1, unpausable, should_revert)[0]
 
-    gate_seal = project.GateSeal.deploy(
+    gate_seal = project.GateSealV2.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
@@ -689,7 +689,7 @@ def test_several_failed_sealables_error_message(
     for index in failed:
         sealables[index] = generate_sealables(1, unpausable, should_revert)[0]
 
-    gate_seal = project.GateSeal.deploy(
+    gate_seal = project.GateSealV2.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,
@@ -732,7 +732,7 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
 
         To test that `success` returns actual value instead of returning bool of memory[0],
         we need to pause the contract before the sealing,
-        so that the condition `success and is_paused()` is false (i.e `False and True`), see GateSeal.vy::seal()
+        so that the condition `success and is_paused()` is false (i.e `False and True`), see GateSealV2.vy::seal()
 
     For that, we use `force_pause_for` on SealableMock to ignore any checks and forcefully pause the contract.
     After calling this function, the SealableMock is paused but the call to `pauseFor` will still revert,
@@ -746,8 +746,8 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
     # we'll use only 1 sealable
     sealables = generate_sealables(1, unpausable, should_revert)
 
-    # deploy GateSeal
-    gate_seal = project.GateSeal.deploy(
+    # deploy GateSealV2
+    gate_seal = project.GateSealV2.deploy(
         sealing_committee,
         seal_duration_seconds,
         sealables,

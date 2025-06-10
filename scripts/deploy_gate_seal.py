@@ -22,7 +22,7 @@ def main():
     max_prolongations = int(load_env_variable("MAX_PROLONGATIONS"))
     prolongation_window_seconds = int(load_env_variable("PROLONGATION_WINDOW_SECONDS"))
     
-    factory = project.GateSealFactory.at(to_checksum_address(factory_address))
+    factory = project.GateSealFactoryV2.at(to_checksum_address(factory_address))
 
     transaction = factory.create_gate_seal(
         sealing_committee,

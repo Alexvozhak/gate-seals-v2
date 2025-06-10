@@ -43,14 +43,14 @@ def stranger(accounts):
 
 @pytest.fixture(scope="function")
 def blueprint_address(project, deployer):
-    gate_seal_bytecode = project.GateSeal.contract_type.deployment_bytecode.bytecode
+    gate_seal_bytecode = project.GateSealV2.contract_type.deployment_bytecode.bytecode
     gate_seal_deploy_code = construct_blueprint_deploy_bytecode(gate_seal_bytecode)
     return deploy_blueprint(deployer, gate_seal_deploy_code)
 
 
 @pytest.fixture(scope="function")
 def gate_seal_factory(project, deployer, blueprint_address):
-    return project.GateSealFactory.deploy(blueprint_address, sender=deployer)
+    return project.GateSealFactoryV2.deploy(blueprint_address, sender=deployer)
 
 
 @pytest.fixture(scope="function")
@@ -77,7 +77,7 @@ def gate_seal(
 
     gate_seal_address = transaction.events[0].gate_seal
 
-    return project.GateSeal.at(gate_seal_address)
+    return project.GateSealV2.at(gate_seal_address)
 
 
 @pytest.fixture(scope="function")

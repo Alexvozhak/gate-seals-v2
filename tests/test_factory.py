@@ -5,14 +5,14 @@ from ape.utils import ZERO_ADDRESS
 
 def test_factory_blueprint_cannot_be_zero_address(project, deployer):
     try:
-        project.GateSealFactory.deploy(ZERO_ADDRESS, sender=deployer)
+        project.GateSealFactoryV2.deploy(ZERO_ADDRESS, sender=deployer)
         assert False, "Should have reverted"
     except VirtualMachineError as e:
         assert "blueprint: zero address" in str(e)
 
 
 def test_blueprint_not_callable(project, blueprint_address):
-    blueprint = project.GateSeal.at(blueprint_address)
+    blueprint = project.GateSealV2.at(blueprint_address)
     try:
         blueprint.get_sealing_committee()
         assert False, "did not crash"

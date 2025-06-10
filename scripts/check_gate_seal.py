@@ -14,7 +14,7 @@ def main():
         logger.error("GATE_SEAL not found")
         sys.exit()
 
-    gate_seal = project.GateSeal.at(to_checksum_address(gate_seal_address))
+    gate_seal = project.GateSealV2.at(to_checksum_address(gate_seal_address))
 
     deployed_filename = construct_deployed_filename(gate_seal_address, "gateseal", check=True)
 
