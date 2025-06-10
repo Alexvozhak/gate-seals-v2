@@ -1,5 +1,10 @@
 name: gate-seal
 
+compile:
+  exclude:
+    - contracts/GateSeal.vy
+    - contracts/GateSealFactory.vy
+
 compiler:
   vyper:
     version: 0.4.1

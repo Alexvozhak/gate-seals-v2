@@ -19,7 +19,7 @@ def main():
     with open(deployed_filename, "r") as deployed_file:
         deployed_data = json.load(deployed_file)
 
-    factory = project.GateSealFactory.at(to_checksum_address(factory_address))
+    factory = project.GateSealFactoryV2.at(to_checksum_address(factory_address))
 
     assert factory.get_blueprint() == deployed_data["blueprint"]
     logger.success("Onchain blueprint matches JSON")
@@ -52,7 +52,7 @@ def main():
 
     gate_seal_address = tx.events[0].gate_seal
 
-    gate_seal = project.GateSeal.at(gate_seal_address)
+    gate_seal = project.GateSealV2.at(gate_seal_address)
 
     logger.info("Checking getters...")
     assert gate_seal.get_sealing_committee() == sealing_committee

@@ -1,7 +1,7 @@
-# @version 0.3.7
+# @version 0.4.1
 
 """
-@title GateSealFactory
+@title GateSealFactoryV2
 @author mymphe
 @notice A factory contract for GateSeals
 @dev This contract is meant to simplify the GateSeal deploy.
@@ -14,7 +14,7 @@
      functioning GateSeal itself but only its initcode.
 
      More on blueprints
-     https://docs.vyperlang.org/en/v0.3.7/built-in-functions.html#chain-interaction
+     https://docs.vyperlang.org/en/v0.4.1/built-in-functions.html#chain-interaction
 
      More on EIP-5202
      https://eips.ethereum.org/EIPS/eip-5202
@@ -24,7 +24,7 @@ event GateSealCreated:
     gate_seal: address
 
 
-# First 3 bytes of the blueprint is the EIP-5202 header;
+# First 3 bytes of the blueprint are the EIP-5202 header;
 # The actual code of the contract starts at 4th byte
 EIP5202_CODE_OFFSET: constant(uint256) = 3
 
@@ -37,7 +37,7 @@ MAX_SEALABLES: constant(uint256) = 8
 # Address of the blueprint that must be deployed beforehand
 BLUEPRINT: immutable(address)
 
-@external
+@deploy
 def __init__(_blueprint: address):
     assert _blueprint != empty(address), "blueprint: zero address"
     BLUEPRINT = _blueprint
@@ -54,7 +54,9 @@ def create_gate_seal(
     _sealing_committee: address,
     _seal_duration_seconds: uint256,
     _sealables: DynArray[address, MAX_SEALABLES],
-    _expiry_timestamp: uint256
+    _lifetime_duration_seconds: uint256,
+    _prolongations: uint256,
+    _prolongation_window_seconds: uint256
 ):
     """
     @notice Create a new GateSeal.
@@ -62,15 +64,19 @@ def create_gate_seal(
     @param _sealing_committee address of the multisig committee
     @param _seal_duration_seconds duration of the seal in seconds
     @param _sealables addresses of pausable contracts
-    @param _expiry_timestamp unix timestamp when the GateSeal will naturally expire
+    @param _lifetime_duration_seconds lifetime duration of the GateSeal
+    @param _prolongations number of prolongations
+    @param _prolongation_window_seconds time window before expiry when prolongation is allowed
     """
     gate_seal: address = create_from_blueprint(
         BLUEPRINT,
         _sealing_committee,
         _seal_duration_seconds,
         _sealables,
-        _expiry_timestamp,
+        _lifetime_duration_seconds,
+        _prolongations,
+        _prolongation_window_seconds,
         code_offset=EIP5202_CODE_OFFSET,
     )
 
-    log GateSealCreated(gate_seal)
+    log GateSealCreated(gate_seal=gate_seal)

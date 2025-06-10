@@ -25,7 +25,7 @@ def main():
     """
         DEPLOY BLUEPRINT
     """
-    gate_seal_bytecode = project.GateSeal.contract_type.deployment_bytecode.bytecode
+    gate_seal_bytecode = project.GateSealV2.contract_type.deployment_bytecode.bytecode
     blueprint_deploy_bytecode = construct_blueprint_deploy_bytecode(gate_seal_bytecode)
     verify_blueprint_deploy_preamble(blueprint_deploy_bytecode)
     blueprint_address = deploy_blueprint(
@@ -54,7 +54,7 @@ def main():
         logger.error("Script stopped.")
         sys.exit()
 
-    factory = project.GateSealFactory.deploy(
+    factory = project.GateSealFactoryV2.deploy(
         blueprint_address,
         sender=deployer,
         max_priority_fee=max_priority_fee,

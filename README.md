@@ -1,6 +1,7 @@
 # GateSeal ⛩️
 
 A one-time panic button for pausable contracts.
+**Note:** This repository now uses Vyper 0.4.x and the updated contracts `GateSealV2` and `GateSealFactoryV2`. The original `GateSeal` and `GateSealFactory` files remain for reference but are excluded from compilation.
 
 ![](/assets/monty-python.png)
 
@@ -41,7 +42,7 @@ A GateSeal is set up with an immutable configuration at the time of construction
 Important to note, that GateSeal does not bypass the access control settings for pausable contracts, which is why GateSeal must be given the appropriate permissions beforehand. If the seal has not yet been triggered and has not expired, the sealing committee can call `prolongLifetime` to extend the lifetime using one of the remaining prolongations. In an emergency the sealing committee simply calls the `seal` function and puts the contracts on pause for the set duration.
 
 ## How are GateSeals created?
-GateSeal is created using the GateSealFactory. The factory uses the blueprint pattern whereby new GateSeal is deployed using the initcode (blueprint) stored onchain. The blueprint is essentially a broken GateSeal that can only be used to create new GateSeal.
+GateSealV2 is created using the GateSealFactoryV2. The factory uses the blueprint pattern whereby new GateSealV2 is deployed using the initcode (blueprint) stored onchain. The blueprint is essentially a broken GateSealV2 that can only be used to create new GateSealV2.
 
 The factory's `create_gate_seal` function takes the number of allowed prolongations and the prolongation window alongside the original parameters.
 While Vyper offers other ways to create new contracts, we opted to use the blueprint pattern because it creates a fully autonomous contract without any dependencies. Unlike other contract-creating functions, [`create_from_blueprint`](https://docs.vyperlang.org/en/stable/built-in-functions.html#chain-interaction) invokes the constructor of the contract, thus, helping avoid the initialization shenanigans.
@@ -139,17 +140,17 @@ ape test
 export DEPLOYER=<your-ape-account-alias>
 ```
 
-2. Deploy the GateSeal blueprint and GateSealFactory;
+2. Deploy the GateSealV2 blueprint and GateSealFactoryV2;
 ```shell
 ape run scripts/deploy_factory.py
 ```
 
 3. Add the GateSeal configuration to environment variables.
-- `FACTORY` - address of the GateSealFactory deployed in Step 1;
+ - `FACTORY` - address of the GateSealFactoryV2 deployed in Step 1;
 - `SEALING_COMMITTEE` - address of the sealing committee;
 - `SEAL_DURATION_SECONDS` - duration of the seal in seconds;
 - `SEALABLES` - a comma-separated list of pausable contracts;
-- `LIFETIME_DURATION_SECONDS` - lifetime duration of the GateSeal;
+ - `LIFETIME_DURATION_SECONDS` - lifetime duration of the GateSealV2;
 - `MAX_PROLONGATIONS` - how many prolongations are allowed;
 - `PROLONGATION_WINDOW_SECONDS` - how long before expiry the committee may prolong;
 
