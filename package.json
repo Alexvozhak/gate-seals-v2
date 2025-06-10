@@ -11,5 +11,13 @@
     "node": ">=18 <23",
     "yarn": ">=1.22.22"
   },
-  "engineStrict": true
+  "engineStrict": true,
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "husky": "^9.1.7"
+  },
+  "scripts": {
+    "prepare": "husky && husky install"
+  }
 }
