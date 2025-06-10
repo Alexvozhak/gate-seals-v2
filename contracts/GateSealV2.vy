@@ -283,22 +283,20 @@ def _has_duplicates(_sealables: DynArray[address, MAX_SEALABLES]) -> bool:
 def _to_error_string(_failed_indexes: DynArray[uint256, MAX_SEALABLES]) -> String[78]:
     """
     @notice converts a list of indexes into an error message to facilitate debugging
-    @dev    The indexes in the error message are given in the descending order to avoid
-            losing leading zeros when casting to string,
+    @dev    The indexes are encoded as a bitmap where each bit represents
+            a failed index. For example,
 
-            e.g. [0, 2, 3, 6] -> "6320"
+            [0, 2, 3, 6] -> 77 (0b1001101)
     @param _failed_indexes a list of sealable indexes that failed to seal 
     """
-    indexes_as_decimal: uint256 = 0
-    loop_index: uint256 = 0
+    bitmap: uint256 = 0
 
-    # convert failed indexes to a decimal representation
+    # convert failed indexes to a bitmap representation
     for failed_index: uint256 in _failed_indexes:
-        indexes_as_decimal += failed_index * 10 ** loop_index
-        loop_index += 1
+        bitmap |= 1 << failed_index
 
-    # generate error message with indexes as a decimal string
+    # generate error message with indexes as a decimal string of the bitmap
     # return type of `uint2str` is String[78] because 2^256 has 78 digits
-    error_message: String[78] = uint2str(indexes_as_decimal)
+    error_message: String[78] = uint2str(bitmap)
 
     return error_message

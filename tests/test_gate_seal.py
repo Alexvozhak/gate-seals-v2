@@ -660,7 +660,8 @@ def test_single_failed_sealable_error_message(
         sender=deployer,
     )
 
-    with pytest.raises(VirtualMachineError, match=str(failing_index)):
+    expected_bitmap = 1 << failing_index
+    with pytest.raises(VirtualMachineError, match=str(expected_bitmap)):
         gate_seal.seal(
             sealables,
             sender=sealing_committee,
@@ -700,8 +701,10 @@ def test_several_failed_sealables_error_message(
     )
 
     failed.sort()
-    failed.reverse()
-    with pytest.raises(VirtualMachineError, match="".join([str(n) for n in failed])):
+    bitmap = 0
+    for index in failed:
+        bitmap |= 1 << index
+    with pytest.raises(VirtualMachineError, match=str(bitmap)):
         gate_seal.seal(
             sealables,
             sender=sealing_committee,
@@ -765,7 +768,7 @@ def test_raw_call_success_should_be_false_when_sealable_reverts_on_pause(
     assert sealables[0].isPaused(), "should be paused now"
 
     # seal() should revert because `raw_call` to sealable returns `success=False`, even though isPaused() is True.
-    with pytest.raises(VirtualMachineError, match="reverted with reason string '0'"):
+    with pytest.raises(VirtualMachineError, match="reverted with reason string '1'"):
         gate_seal.seal(sealables, sender=sealing_committee)
 
 
